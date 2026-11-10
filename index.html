@@ -459,7 +459,69 @@ function drawWatermarkedImage() {
   ctx.fillText(timeStr,previewCanvas.width-24,previewCanvas.height-barHeight+42);
   ctx.textAlign = 'left';
 }
+/* =====================================================
+   照片自動壓縮：目標 300KB 以下
+===================================================== */
 
+function compressCanvasToTarget(sourceCanvas, maxBytes = 300 * 1024) {
+
+  const scales = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+  const qualities = [0.80, 0.75, 0.70, 0.65, 0.60, 0.55];
+
+  let bestData = '';
+  let bestSize = Infinity;
+
+  for (const scale of scales) {
+
+    const canvas = document.createElement('canvas');
+
+    canvas.width = Math.round(sourceCanvas.width * scale);
+    canvas.height = Math.round(sourceCanvas.height * scale);
+
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(
+      sourceCanvas,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    for (const quality of qualities) {
+
+      const data = canvas.toDataURL('image/jpeg', quality);
+
+      const base64 = data.split(',')[1];
+      const size = Math.ceil(base64.length * 3 / 4);
+
+      if (size < bestSize) {
+        bestSize = size;
+        bestData = data;
+      }
+
+      if (size <= maxBytes) {
+        console.log(
+          '照片壓縮完成：',
+          Math.round(size / 1024) + ' KB',
+          '畫質：',
+          quality,
+          '尺寸：',
+          canvas.width + ' × ' + canvas.height
+        );
+
+        return data;
+      }
+    }
+  }
+
+  console.warn(
+    '照片已盡力壓縮，最終大小：',
+    Math.round(bestSize / 1024) + ' KB'
+  );
+
+  return bestData;
+}
 /* =====================================================
    背景排隊上傳
 ===================================================== */
@@ -520,7 +582,7 @@ submitBtn.addEventListener('click',function() {
   submitBtn.disabled = true;
   try {
     drawWatermarkedImage();
-    const imageData = previewCanvas.toDataURL('image/jpeg',.85);
+    const imageData = compressCanvasToTarget(previewCanvas, 300 * 1024);
     const className = classSelect.value;
     /* 區域前綴供查詢頁篩選 */
     const areaPrefix =
