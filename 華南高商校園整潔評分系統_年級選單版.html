@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>華南高商校園整潔評分系統</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { -webkit-tap-highlight-color: transparent; }
+.hidden { display: none !important; }
+.record-photo {
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  max-height: 360px;
+  object-fit: contain;
+  background: #f1f5f9;
+  border-radius: 12px;
+}
+button:disabled { opacity:.55; cursor:not-allowed; }
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+
+<header class="bg-blue-700 text-white py-4 px-4 shadow-md sticky top-0 z-40">
+  <div class="max-w-3xl mx-auto flex items-center justify-between">
+    <button id="homeBtn" class="text-sm font-bold">🧹 校園整潔評分</button>
+    <span id="headerPageName" class="text-sm">首頁</span>
+  </div>
+</header>
+
+<main class="max-w-3xl mx-auto p-4 space-y-4">
+
+<!-- 首頁 -->
+<section id="homePage" class="space-y-4">
+  <div class="bg-white rounded-2xl shadow-sm p-6 text-center space-y-2">
+    <div class="text-5xl">🧹</div>
+    <h1 class="text-xl font-bold">華南高商校園整潔評分系統</h1>
+    <p class="text-sm text-slate-500">請選擇要使用的功能</p>
+  </div>
+  <button id="goRatingBtn" class="w-full bg-blue-600 text-white rounded-2xl p-5 text-left shadow-sm">
+    <div class="text-xl font-bold">📷 評分系統</div>
+    <div class="text-sm mt-1 text-blue-100">選擇班級、巡查區域、拍照並上傳缺失紀錄</div>
+  </button>
+  <button id="goQueryBtn" class="w-full bg-white rounded-2xl p-5 text-left shadow-sm border">
+    <div class="text-xl font-bold">📊 查看評分</div>
+    <div class="text-sm mt-1 text-slate-500">查詢各班紀錄、查看照片及缺失統計</div>
+  </button>
+</section>
+
+<!-- 評分系統 -->
+<section id="ratingPage" class="hidden space-y-4">
+  <button class="backHome text-sm text-blue-700 font-semibold">← 返回首頁</button>
+
+  <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
+    <h2 class="font-semibold text-blue-700 border-b pb-2">1. 評分基本資料</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm font-medium mb-1">年級</label>
+        <select id="ratingGrade" class="w-full border rounded-lg p-3 bg-white">
+          <option value="">請先選擇年級</option>
+          <option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">受評班級</label>
+        <select id="classSelect" class="w-full border rounded-lg p-3 bg-white" disabled>
+          <option value="">請先選擇年級</option>
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-2">巡查區域</label>
+      <div class="grid grid-cols-3 gap-2">
+        <button type="button" id="classroomTab" class="py-3 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold">🏫 教室</button>
+        <button type="button" id="toiletTab" class="py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold">🚻 廁所</button>
+        <button type="button" id="outdoorTab" class="py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold">🌳 外掃區</button>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-2">缺失項目（可複選）</label>
+      <div id="issueList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2"></div>
+      <input type="text" id="otherIssueInput" placeholder="其他補充說明（選填）" class="w-full border rounded-lg p-3 text-sm">
+    </div>
+  </section>
+
+  <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
+    <h2 class="font-semibold text-blue-700 border-b pb-2">2. 現場拍照蒐證</h2>
+    <div class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-7 bg-blue-50 relative">
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20">
+      <div class="text-center space-y-2 pointer-events-none">
+        <div class="text-5xl">📷</div>
+        <p class="font-bold text-blue-700">點擊此處開啟相機拍照</p>
+        <p class="text-xs text-slate-500">拍照後會先顯示浮水印照片供確認</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 上傳進度 -->
+  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+    <h3 class="font-semibold">☁️ 雲端上傳進度</h3>
+    <div class="grid grid-cols-3 gap-2 text-center text-sm">
+      <div class="bg-blue-50 rounded-lg p-2"><div class="text-blue-600 font-bold text-2xl" id="queueCount">0</div><div class="text-slate-500">等待上傳</div></div>
+      <div class="bg-amber-50 rounded-lg p-2"><div class="text-amber-600 font-bold text-2xl" id="uploadingCount">0</div><div class="text-slate-500">上傳中</div></div>
+      <div class="bg-green-50 rounded-lg p-2"><div class="text-green-600 font-bold text-2xl" id="successCount">0</div><div class="text-slate-500">已完成</div></div>
+    </div>
+    <p id="uploadStatus" class="text-xs text-slate-500">目前沒有待上傳照片</p>
+    <p id="failedCount" class="text-xs text-red-600"></p>
+    <p class="text-xs text-amber-700">提醒：待上傳照片暫存在目前頁面，上傳完成前請勿關閉或重新整理網頁。</p>
+  </section>
+</section>
+
+<!-- 查看評分 -->
+<section id="queryPage" class="hidden space-y-4">
+  <div class="flex items-center justify-between">
+    <button class="backHome text-sm text-blue-700 font-semibold">← 返回首頁</button>
+    <button id="reloadBtn" class="text-sm bg-blue-100 text-blue-700 px-3 py-2 rounded-lg">↻ 重新整理</button>
+  </div>
+
+  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+    <h2 class="font-bold text-lg">📊 評分紀錄查詢</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm mb-1">年級</label>
+        <select id="queryGrade" class="w-full border rounded-lg p-2.5 bg-white">
+          <option value="">全部年級</option>
+          <option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">班級</label>
+        <select id="queryClass" class="w-full border rounded-lg p-2.5 bg-white">
+          <option value="">全部班級</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm mb-1">巡查區域</label>
+        <select id="queryArea" class="w-full border rounded-lg p-2.5 bg-white">
+          <option value="">全部區域</option><option value="教室">教室</option><option value="廁所">廁所</option><option value="外掃區">外掃區</option>
+        </select>
+      </div>
+      <div><label class="block text-sm mb-1">開始日期</label><input type="date" id="dateFrom" class="w-full border rounded-lg p-2.5"></div>
+      <div><label class="block text-sm mb-1">結束日期</label><input type="date" id="dateTo" class="w-full border rounded-lg p-2.5"></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <button id="applyFilterBtn" class="bg-blue-600 text-white rounded-lg py-2.5 font-semibold">套用篩選</button>
+      <button id="clearFilterBtn" class="bg-slate-100 rounded-lg py-2.5 font-semibold">清除條件</button>
+    </div>
+    <p id="queryStatus" class="text-xs text-slate-500">尚未載入資料</p>
+  </section>
+
+  <!-- 統計 -->
+  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+    <h3 class="font-bold">📈 篩選結果統計</h3>
+    <div class="grid grid-cols-3 gap-2 text-center">
+      <div class="bg-slate-50 rounded-lg p-3"><div id="statRecords" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">紀錄筆數</div></div>
+      <div class="bg-slate-50 rounded-lg p-3"><div id="statClasses" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">涉及班級</div></div>
+      <div class="bg-slate-50 rounded-lg p-3"><div id="statPhotos" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">照片數量</div></div>
+    </div>
+    <div><h4 class="text-sm font-semibold mb-2">各班缺失紀錄數</h4><div id="classStats" class="space-y-1 text-sm"></div></div>
+    <div><h4 class="text-sm font-semibold mb-2">缺失項目分布</h4><div id="issueStats" class="space-y-1 text-sm"></div></div>
+  </section>
+
+  <!-- 紀錄明細 -->
+  <section class="space-y-3">
+    <div class="flex items-center justify-between"><h3 class="font-bold">🗂️ 紀錄明細</h3><button id="adminLoginBtn" class="text-xs border rounded-lg px-3 py-2">管理者登入</button></div>
+    <p id="adminStatus" class="text-xs text-slate-500">一般查詢模式</p>
+    <div id="recordList" class="space-y-3"><div class="bg-white rounded-xl p-5 text-center text-sm text-slate-500">請先載入資料</div></div>
+  </section>
+</section>
+</main>
+
+<!-- 拍照確認視窗 -->
+<div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/80 p-3 flex items-center justify-center">
+  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto p-4 space-y-3 shadow-2xl">
+    <div class="flex items-center justify-between"><h2 class="font-bold text-lg">📷 確認照片與浮水印</h2><span class="text-xs text-slate-500">確認內容正確</span></div>
+    <canvas id="previewCanvas" class="w-full max-h-[58vh] object-contain rounded-lg bg-slate-100"></canvas>
+    <div class="grid grid-cols-2 gap-3">
+      <button id="retakeBtn" class="py-3 rounded-xl bg-slate-200 font-bold">↩ 重新拍攝</button>
+      <button id="submitBtn" disabled class="py-3 rounded-xl bg-blue-600 text-white font-bold">✓ 確認並上傳</button>
+    </div>
+    <p class="text-xs text-slate-500 text-center">確認後會立即加入背景上傳，並保留目前班級及巡查區域。</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================
+   GAS 第 5 版部署網址
+===================================================== */
+const GAS_WEB_APP_URL =
+"https://script.google.com/macros/s/AKfycbwIawYhq3X8W0ps-uurZhwe3JYxSq1GWN54SJnjWsdT6mxvp6MVPZgrz-s1mjJ6Yu9Txw/exec";
+
+/* =====================================================
+   頁面切換
+===================================================== */
+const pageIds = ['homePage','ratingPage','queryPage'];
+
+function showPage(page) {
+  pageIds.forEach(id => {
+    document.getElementById(id).classList.toggle('hidden',id !== page);
+  });
+  document.getElementById('headerPageName').textContent =
+    page === 'ratingPage' ? '評分系統' :
+    page === 'queryPage' ? '查看評分' : '首頁';
+  window.scrollTo(0,0);
+  if (page === 'queryPage' && !recordsLoaded) loadRecords();
+}
+
+document.getElementById('goRatingBtn').onclick = () => showPage('ratingPage');
+document.getElementById('goQueryBtn').onclick = () => showPage('queryPage');
+document.getElementById('homeBtn').onclick = () => showPage('homePage');
+document.querySelectorAll('.backHome').forEach(btn => {
+  btn.onclick = () => showPage('homePage');
+});
+
+/* =====================================================
+   評分系統
+===================================================== */
+const cameraInput = document.getElementById('cameraInput');
+const previewCanvas = document.getElementById('previewCanvas');
+const previewModal = document.getElementById('previewModal');
+const submitBtn = document.getElementById('submitBtn');
+const CLASS_GROUPS = {
+  '一': ['商一1','國一1','航一1','電一1','資一1','廣一1','美一1','英一1','日一1','觀一1','高一1','高一2','高一3','高一4'],
+  '二': ['商二1','觀二1','國二1','國二2','電二1','資二1','廣二1','美二1','英二1','英二2','高二1','高二2','高二3','高二4'],
+  '三': ['商三1','觀三1','國三1','國三2','電三1','資三1','廣三1','美三1','英三1','英三2','高三1','高三2','高三3','高三4']
+};
+
+function populateClassOptions(selectElement, grade, placeholder) {
+  const previousValue = selectElement.value;
+  selectElement.innerHTML = '';
+  const firstOption = document.createElement('option');
+  firstOption.value = '';
+  firstOption.textContent = placeholder;
+  selectElement.appendChild(firstOption);
+  const classNames = grade ? (CLASS_GROUPS[grade] || []) : Object.values(CLASS_GROUPS).flat();
+  classNames.forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    selectElement.appendChild(option);
+  });
+  if (classNames.includes(previousValue)) selectElement.value = previousValue;
+}
+
+const classSelect = document.getElementById('classSelect');
+const issueList = document.getElementById('issueList');
+const otherIssueInput = document.getElementById('otherIssueInput');
+const ratingGrade = document.getElementById('ratingGrade');
+const queryGrade = document.getElementById('queryGrade');
+populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
+ratingGrade.addEventListener('change', () => {
+  populateClassOptions(classSelect, ratingGrade.value, ratingGrade.value ? '請選擇班級' : '請先選擇年級');
+  classSelect.disabled = !ratingGrade.value;
+  checkFormReady();
+  if (loadedImage) drawWatermarkedImage();
+});
+queryGrade.addEventListener('change', () => {
+  populateClassOptions(document.getElementById('queryClass'), queryGrade.value, '全部班級');
+  renderRecords();
+});
+
+const classroomTab = document.getElementById('classroomTab');
+const toiletTab = document.getElementById('toiletTab');
+const outdoorTab = document.getElementById('outdoorTab');
+
+const issueOptions = {
+  classroom: [
+    ['垃圾、回收未倒','🗑️ 垃圾、回收未倒'],
+    ['地面髒亂','🥤 地面髒亂'],
+    ['玻璃窗台未擦','🪟 玻璃窗台未擦'],
+    ['黑板未擦','⬛ 黑板未擦'],
+    ['桌椅未整齊','🪑 桌椅未整齊'],
+    ['櫃子雜物','🗄️ 櫃子雜物'],
+    ['洗手臺髒亂','🚰 洗手臺髒亂'],
+    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
+  ],
+  toilet: [
+    ['地面髒亂','🥤 地面髒亂'],
+    ['洗手臺、鏡子未擦','🚰 洗手臺、鏡子未擦'],
+    ['馬桶小便斗未刷','🚽 馬桶小便斗未刷'],
+    ['垃圾未倒','🗑️ 垃圾未倒'],
+    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
+  ],
+  outdoor: [
+    ['垃圾、回收超過1/2桶未倒','🗑️ 垃圾、回收超過1/2桶未倒'],
+    ['人工垃圾未清','🥤 人工垃圾未清'],
+    ['落葉/蜘蛛絲未清','🍂 落葉/蜘蛛絲未清'],
+    ['走廊窗台窗戶未擦','🪟 走廊窗台窗戶未擦'],
+    ['飲水機髒亂','🚰 飲水機髒亂'],
+    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
+  ]
+};
+
+let currentArea = 'classroom';
+let loadedImage = null;
+let uploadQueue = [];
+let isUploading = false;
+let totalSuccess = 0;
+let totalFailed = 0;
+
+/* 缺失選項 */
+function renderIssueOptions() {
+  issueList.innerHTML = '';
+  issueOptions[currentArea].forEach(([value,label]) => {
+    const wrapper = document.createElement('label');
+    wrapper.className = 'flex items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg border';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'issue';
+    checkbox.value = value;
+    checkbox.className = 'w-4 h-4 shrink-0';
+    checkbox.addEventListener('change',() => {
+      checkFormReady();
+      if (loadedImage) drawWatermarkedImage();
+    });
+    const span = document.createElement('span');
+    span.textContent = label;
+    wrapper.append(checkbox,span);
+    issueList.appendChild(wrapper);
+  });
+  checkFormReady();
+}
+
+/* 區域切換 */
+function setArea(area) {
+  currentArea = area;
+  const active = 'py-3 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold';
+  const inactive = 'py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold';
+  classroomTab.className = area === 'classroom' ? active : inactive;
+  toiletTab.className = area === 'toilet' ? active : inactive;
+  outdoorTab.className = area === 'outdoor' ? active : inactive;
+  renderIssueOptions();
+  if (loadedImage) drawWatermarkedImage();
+}
+classroomTab.onclick = () => setArea('classroom');
+toiletTab.onclick = () => setArea('toilet');
+outdoorTab.onclick = () => setArea('outdoor');
+
+/* 取得缺失項目 */
+function getSelectedIssues() {
+  const selected = Array.from(document.querySelectorAll('input[name="issue"]:checked'))
+    .map(cb => cb.value);
+  if (otherIssueInput.value.trim()) selected.push(otherIssueInput.value.trim());
+  return selected.join('、');
+}
+
+/* 表單檢查 */
+function checkFormReady() {
+  const hasIssue =
+    document.querySelectorAll('input[name="issue"]:checked').length > 0 ||
+    otherIssueInput.value.trim() !== '';
+  submitBtn.disabled = !(classSelect.value && hasIssue && loadedImage);
+}
+
+classSelect.addEventListener('change',() => {
+  checkFormReady();
+  if (loadedImage) drawWatermarkedImage();
+});
+otherIssueInput.addEventListener('input',() => {
+  checkFormReady();
+  if (loadedImage) drawWatermarkedImage();
+});
+
+/* 拍照前檢查班級：未選班級不得開啟相機 */
+cameraInput.addEventListener('click',function(e) {
+  if (!classSelect.value) {
+    e.preventDefault();
+    cameraInput.value = '';
+    alert('尚未選擇班級，請先選擇班級後再拍照。');
+  }
+});
+
+/* 拍照讀取 */
+cameraInput.addEventListener('change',function(e) {
+  if (!classSelect.value) {
+    cameraInput.value = '';
+    alert('尚未選擇班級，無法生成浮水印照片或上傳。');
+    return;
+  }
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const img = new Image();
+    img.onload = function() {
+      loadedImage = img;
+      drawWatermarkedImage();
+      previewModal.classList.remove('hidden');
+      checkFormReady();
+    };
+    img.onerror = () => alert('圖片載入失敗，請重新拍攝。');
+    img.src = event.target.result;
+  };
+  reader.onerror = () => alert('讀取照片失敗。');
+  reader.readAsDataURL(file);
+});
+
+/* 清除目前照片 */
+function clearCurrentPhoto() {
+  cameraInput.value = '';
+  loadedImage = null;
+  previewModal.classList.add('hidden');
+  previewCanvas.width = 0;
+  previewCanvas.height = 0;
+  checkFormReady();
+}
+document.getElementById('retakeBtn').onclick = clearCurrentPhoto;
+
+/* =====================================================
+   浮水印
+===================================================== */
+function drawWatermarkedImage() {
+  if (!loadedImage) return;
+  const ctx = previewCanvas.getContext('2d');
+  const targetWidth = Math.min(1600,loadedImage.width);
+  const scale = targetWidth / loadedImage.width;
+  previewCanvas.width = targetWidth;
+  previewCanvas.height = Math.round(loadedImage.height * scale);
+  ctx.drawImage(loadedImage,0,0,previewCanvas.width,previewCanvas.height);
+
+  const className = '班級：' + (classSelect.value || '未選');
+  const areaName =
+    currentArea === 'classroom' ? '教室' :
+    currentArea === 'toilet' ? '廁所' : '外掃區';
+  const issueText = '區域：' + areaName + '　缺失：' + (getSelectedIssues() || '未填');
+  const now = new Date();
+  const timeStr = '時間：' +
+    now.getFullYear() + '/' +
+    String(now.getMonth()+1).padStart(2,'0') + '/' +
+    String(now.getDate()).padStart(2,'0') + ' ' +
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0');
+
+  /* 放大班級文字後，同步增加底部浮水印區高度 */
+  const barHeight = Math.max(180,Math.round(previewCanvas.width * .15));
+  ctx.fillStyle = 'rgba(0,0,0,.72)';
+  ctx.fillRect(0,previewCanvas.height-barHeight,previewCanvas.width,barHeight);
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'left';
+  /* 僅班級文字放大兩倍；缺失原因與時間字體維持原設定 */
+  ctx.font = `bold ${Math.max(52,Math.round(previewCanvas.width*.064))}px sans-serif`;
+  ctx.fillText(className,24,previewCanvas.height-barHeight+42);
+  ctx.font = `${Math.max(22,Math.round(previewCanvas.width*.026))}px sans-serif`;
+  const maxWidth = previewCanvas.width-48;
+  let line = issueText;
+  while (ctx.measureText(line).width > maxWidth && line.length > 8) {
+    line = line.slice(0,-2)+'…';
+  }
+  ctx.fillText(line,24,previewCanvas.height-24);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = `${Math.max(18,Math.round(previewCanvas.width*.019))}px sans-serif`;
+  ctx.fillText(timeStr,previewCanvas.width-24,previewCanvas.height-barHeight+42);
+  ctx.textAlign = 'left';
+}
+
+/* =====================================================
+   背景排隊上傳
+===================================================== */
+function updateUploadStatus() {
+  document.getElementById('queueCount').textContent = uploadQueue.length;
+  document.getElementById('uploadingCount').textContent = isUploading ? 1 : 0;
+  document.getElementById('successCount').textContent = totalSuccess;
+  document.getElementById('failedCount').textContent = totalFailed
+    ? `⚠️ 失敗 ${totalFailed} 張，請檢查網路或雲端紀錄` : '';
+  const status = document.getElementById('uploadStatus');
+  if (isUploading && uploadQueue.length) {
+    status.textContent = `正在上傳照片，另有 ${uploadQueue.length} 張等待中`;
+  } else if (isUploading) {
+    status.textContent = '正在上傳最後一張照片...';
+  } else if (uploadQueue.length) {
+    status.textContent = `尚有 ${uploadQueue.length} 張照片等待上傳`;
+  } else {
+    status.textContent = '目前沒有待上傳照片';
+  }
+}
+
+/* 依序上傳 */
+async function processUploadQueue() {
+  if (isUploading) return;
+  isUploading = true;
+  updateUploadStatus();
+  while (uploadQueue.length > 0) {
+    const payload = uploadQueue.shift();
+    updateUploadStatus();
+    try {
+      const response = await fetch(GAS_WEB_APP_URL,{method:'POST',body:JSON.stringify(payload)});
+      if (!response.ok) throw new Error('HTTP '+response.status);
+      const result = await response.json();
+      if (result && result.result === 'success') {
+        totalSuccess++;
+      } else {
+        totalFailed++;
+        console.error('雲端回報上傳失敗：',result.error);
+      }
+    } catch(err) {
+      totalFailed++;
+      console.error('照片上傳錯誤：',err);
+    }
+    updateUploadStatus();
+  }
+  isUploading = false;
+  updateUploadStatus();
+}
+
+/* 確認照片並加入佇列 */
+submitBtn.addEventListener('click',function() {
+  if (!classSelect.value) {
+    alert('尚未選擇班級，不能上傳照片。');
+    checkFormReady();
+    return;
+  }
+  if (!loadedImage || submitBtn.disabled) return;
+  submitBtn.disabled = true;
+  try {
+    drawWatermarkedImage();
+    const imageData = previewCanvas.toDataURL('image/jpeg',.85);
+    const className = classSelect.value;
+    /* 區域前綴供查詢頁篩選 */
+    const areaPrefix =
+      currentArea === 'classroom' ? '教室' :
+      currentArea === 'toilet' ? '廁所' : '外掃區';
+    const issue = `[${areaPrefix}] ${getSelectedIssues()}`;
+    const timestamp = new Date().toLocaleString('zh-TW',{hour12:false});
+    const fileName = `整潔評分_${className}_${Date.now()}.jpg`;
+    uploadQueue.push({className,issue,timestamp,fileName,imageData});
+    updateUploadStatus();
+    /* 保留班級及區域，清空本張缺失 */
+    document.querySelectorAll('input[name="issue"]').forEach(cb => cb.checked = false);
+    otherIssueInput.value = '';
+    clearCurrentPhoto();
+    processUploadQueue();
+  } catch(err) {
+    alert('照片處理失敗：'+err.message);
+    checkFormReady();
+  }
+});
+
+renderIssueOptions();
+updateUploadStatus();
+
+/* =====================================================
+   查看評分：查詢 GAS
+===================================================== */
+let allRecords = [];
+let recordsLoaded = false;
+let adminPassword = '';
+
+/* JSONP 查詢 */
+function jsonpRequest(url,timeoutMs=20000) {
+  return new Promise((resolve,reject) => {
+    const callbackName = 'gasJsonp_' + Date.now() + '_' + Math.floor(Math.random()*100000);
+    const script = document.createElement('script');
+    let finished = false;
+    const timer = setTimeout(() => finish(new Error('查詢逾時，請稍後重試。')),timeoutMs);
+    function finish(err,data) {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      try { delete window[callbackName]; }
+      catch(e) { window[callbackName] = undefined; }
+      script.remove();
+      if (err) reject(err);
+      else resolve(data);
+    }
+    window[callbackName] = data => finish(null,data);
+    script.onerror = () => finish(new Error('無法連線至 GAS，請確認部署權限及網址。'));
+    script.src = url + (url.includes('?') ? '&' : '?') +
+      'action=list&callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+/* =====================================================
+   Google Drive 照片網址處理
+===================================================== */
+function extractDriveId(url) {
+  const s = String(url || '');
+  if (!s) return '';
+  const pathMatch = s.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (pathMatch) return pathMatch[1];
+  try {
+    const u = new URL(s);
+    const id = u.searchParams.get('id');
+    if (id) return id;
+  } catch (err) {
+    // 網址格式不標準時，繼續使用正規表示式
+  }
+  const queryMatch = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return queryMatch ? queryMatch[1] : '';
+}
+
+/* 產生 Google Drive 縮圖網址 */
+function getThumbnailUrl(fileId) {
+  if (!fileId) return '';
+  return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w800';
+}
+
+/* =====================================================
+   資料格式整理
+===================================================== */
+function normalizeRecord(raw) {
+  const fileUrl = raw.fileUrl ?? raw.photoUrl ?? raw.imageUrl ?? raw.photoLink ?? raw.url ?? '';
+  const fileId = raw.fileId ?? raw.photoId ?? extractDriveId(fileUrl) ?? '';
+  const thumbnailUrl = raw.thumbnailUrl || getThumbnailUrl(fileId);
+  return {
+    rowNumber: raw.rowNumber ?? raw.row ?? raw.rowIndex ?? '',
+    timestamp: raw.timestamp ?? raw.time ?? raw.date ?? '',
+    className: raw.className ?? raw.class ?? raw.classroom ?? '',
+    issue: raw.issue ?? raw.issues ?? '',
+    fileUrl: fileUrl,
+    fileId: fileId,
+    thumbnailUrl: thumbnailUrl
+  };
+}
+
+/* =====================================================
+   載入資料
+===================================================== */
+async function loadRecords() {
+  const status = document.getElementById('queryStatus');
+  status.textContent = '資料載入中…';
+  document.getElementById('recordList').innerHTML =
+    '<div class="bg-white rounded-xl p-5 text-center">資料載入中…</div>';
+  try {
+    const data = await jsonpRequest(GAS_WEB_APP_URL);
+    if (!data || data.result === 'error') {
+      throw new Error((data && data.error) || 'GAS 回傳資料格式不正確');
+    }
+    const source =
+      Array.isArray(data.records) ? data.records :
+      Array.isArray(data.data) ? data.data :
+      Array.isArray(data.items) ? data.items :
+      Array.isArray(data.rows) ? data.rows : null;
+    if (!source) {
+      throw new Error('查詢回傳內容沒有 records/data/items/rows 陣列，請核對 GAS doGet 回傳格式。');
+    }
+    allRecords = source.map(normalizeRecord);
+    recordsLoaded = true;
+    status.textContent = `載入完成，共 ${allRecords.length} 筆紀錄`;
+    renderRecords();
+  } catch(err) {
+    recordsLoaded = false;
+    status.textContent = '載入失敗：' + err.message;
+    document.getElementById('recordList').innerHTML =
+      `<div class="bg-white rounded-xl p-4 text-sm text-red-600">${escapeHtml(err.message)}</div>`;
+  }
+}
+
+/* =====================================================
+   日期解析
+===================================================== */
+function parseRecordDate(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  let d = new Date(s);
+  if (!Number.isNaN(d.getTime())) return d;
+  // 支援 yyyy-MM-dd HH:mm:ss
+  const m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (m) {
+    return new Date(+m[1],+m[2]-1,+m[3],+(m[4] || 0),+(m[5] || 0),+(m[6] || 0));
+  }
+  return null;
+}
+
+/* =====================================================
+   篩選資料
+===================================================== */
+function getFilteredRecords() {
+  const cls = document.getElementById('queryClass').value;
+  const grade = document.getElementById('queryGrade').value;
+  const area = document.getElementById('queryArea').value;
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  return allRecords.filter(r => {
+    if (cls && r.className !== cls) return false;
+    if (grade && !String(r.className || '').includes(grade)) return false;
+    if (area && !String(r.issue).startsWith('[' + area + ']')) return false;
+    const d = parseRecordDate(r.timestamp);
+    if (from && (!d || d < new Date(from + 'T00:00:00'))) return false;
+    if (to && (!d || d > new Date(to + 'T23:59:59'))) return false;
+    return true;
+  }).sort((a,b) => {
+    return (parseRecordDate(b.timestamp)?.getTime() || 0) -
+      (parseRecordDate(a.timestamp)?.getTime() || 0);
+  });
+}
+
+/* =====================================================
+   HTML 安全處理
+===================================================== */
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g,ch => ({
+    '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'
+  }[ch]));
+}
+
+/* =====================================================
+   統計資料
+===================================================== */
+function renderStats(records) {
+  document.getElementById('statRecords').textContent = records.length;
+  document.getElementById('statClasses').textContent =
+    new Set(records.map(r => r.className).filter(Boolean)).size;
+  document.getElementById('statPhotos').textContent =
+    records.filter(r => r.fileUrl || r.fileId).length;
+
+  const classCounts = {};
+  const issueCounts = {};
+  records.forEach(r => {
+    const className = r.className || '未標示班級';
+    classCounts[className] = (classCounts[className] || 0) + 1;
+    let text = String(r.issue || '').replace(/^\[(教室|廁所|外掃區)\]\s*/, '');
+    text.split(/[、,，\n]/).map(x => x.trim()).filter(Boolean).forEach(item => {
+      issueCounts[item] = (issueCounts[item] || 0) + 1;
+    });
+  });
+
+  const classEntries = Object.entries(classCounts).sort((a,b) => b[1]-a[1]);
+  const issueEntries = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
+  document.getElementById('classStats').innerHTML = classEntries.length
+    ? classEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1"><span>${escapeHtml(k)}</span><b>${v} 筆</b></div>`).join('')
+    : '<p class="text-slate-400">沒有資料</p>';
+  document.getElementById('issueStats').innerHTML = issueEntries.length
+    ? issueEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1 gap-3"><span>${escapeHtml(k)}</span><b>${v} 次</b></div>`).join('')
+    : '<p class="text-slate-400">沒有資料</p>';
+}
+
+/* =====================================================
+   紀錄列表及照片縮圖
+===================================================== */
+function renderRecords() {
+  const records = getFilteredRecords();
+  renderStats(records);
+  const list = document.getElementById('recordList');
+  if (!records.length) {
+    list.innerHTML = '<div class="bg-white rounded-xl p-5 text-center text-sm text-slate-500">查無符合條件的紀錄</div>';
+    return;
+  }
+
+  list.innerHTML = records.map((r,index) => {
+    const area = (String(r.issue).match(/^\[(教室|廁所|外掃區)\]/) || [])[1] || '未分類';
+    const issueText = String(r.issue || '').replace(/^\[(教室|廁所|外掃區)\]\s*/, '');
+
+    /* 照片顯示 */
+    let photo = '';
+    if (r.fileUrl || r.thumbnailUrl) {
+      if (r.thumbnailUrl) {
+        photo = `
+          <div class="mt-3">
+            <a href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">
+              <img class="record-photo" loading="lazy" src="${escapeHtml(r.thumbnailUrl)}" alt="評分照片"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+              <div class="text-xs text-red-500 mt-2" style="display:none;">照片縮圖載入失敗，請點擊下方連結查看原始照片。</div>
+            </a>
+            <a class="text-xs text-blue-700 underline mt-2 inline-block" href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">另開照片</a>
+          </div>`;
+      } else {
+        photo = `
+          <p class="text-xs text-red-500 mt-2">無法取得照片縮圖網址</p>
+          <a class="text-xs text-blue-700 underline" href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">另開照片</a>`;
+      }
+    } else {
+      photo = '<p class="text-xs text-slate-400 mt-2">無照片連結</p>';
+    }
+
+    /* 刪除按鈕 */
+    const deleteButton = adminPassword ? `
+      <button type="button" class="deleteRecordBtn mt-3 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2" data-index="${index}">
+        刪除此筆紀錄及照片
+      </button>` : '';
+
+    /* 單筆紀錄 */
+    return `
+      <article class="bg-white rounded-xl shadow-sm p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="font-bold">
+              ${escapeHtml(r.className || '未標示班級')}
+              <span class="text-xs font-medium px-2 py-1 rounded-full ${
+                area === '教室' ? 'bg-blue-50 text-blue-700' :
+                area === '廁所' ? 'bg-emerald-50 text-emerald-700' :
+                area === '外掃區' ? 'bg-amber-50 text-amber-700' :
+                'bg-slate-100 text-slate-600'
+              }">${area}</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">${escapeHtml(r.timestamp || '未標示時間')}</div>
+          </div>
+        </div>
+        <p class="text-sm mt-3 whitespace-pre-wrap break-words">${escapeHtml(issueText || '未填寫缺失')}</p>
+        ${photo}
+        ${deleteButton}
+      </article>`;
+  }).join('');
+
+  /* 綁定刪除事件 */
+  list.querySelectorAll('.deleteRecordBtn').forEach(btn => {
+    btn.addEventListener('click',() => {
+      const record = records[Number(btn.dataset.index)];
+      deleteRecord(record);
+    });
+  });
+}
+
+/* =====================================================
+   篩選按鈕
+===================================================== */
+['queryClass','queryGrade','queryArea','dateFrom','dateTo'].forEach(id => {
+  document.getElementById(id).addEventListener('change',renderRecords);
+});
+document.getElementById('applyFilterBtn').onclick = renderRecords;
+document.getElementById('clearFilterBtn').onclick = () => {
+  ['queryClass','queryGrade','queryArea','dateFrom','dateTo'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
+  renderRecords();
+};
+document.getElementById('reloadBtn').onclick = loadRecords;
+
+/* =====================================================
+   管理者登入及刪除
+===================================================== */
+document.getElementById('adminLoginBtn').onclick = () => {
+  if (adminPassword) {
+    adminPassword = '';
+    document.getElementById('adminLoginBtn').textContent = '管理者登入';
+    document.getElementById('adminStatus').textContent = '一般查詢模式';
+    renderRecords();
+    return;
+  }
+  const password = prompt('請輸入管理者密碼：');
+  if (password === null || !password.trim()) return;
+  adminPassword = password.trim();
+  document.getElementById('adminLoginBtn').textContent = '管理者登出';
+  document.getElementById('adminStatus').textContent = '管理者模式：可刪除紀錄';
+  renderRecords();
+};
+
+/* =====================================================
+   刪除紀錄
+===================================================== */
+async function deleteRecord(record) {
+  if (!adminPassword) {
+    alert('請先登入管理者。');
+    return;
+  }
+  if (!confirm(`確定刪除這筆紀錄？\n\n${record.className}\n${record.timestamp}\n${record.issue}`)) return;
+  if (!record.rowNumber) {
+    alert('這筆資料沒有 rowNumber，無法安全刪除。請確認 GAS 查詢回傳欄位。');
+    return;
+  }
+
+  const form = new URLSearchParams();
+  form.set('action','delete');
+  form.set('rowNumber',String(record.rowNumber));
+  form.set('fileId',String(record.fileId || extractDriveId(record.fileUrl) || ''));
+  form.set('className',String(record.className || ''));
+  form.set('timestamp',String(record.timestamp || ''));
+  form.set('issue',String(record.issue || ''));
+  form.set('fileUrl',String(record.fileUrl || ''));
+  form.set('password',adminPassword);
+
+  try {
+    /* no-cors POST 無法讀取 GAS 回應。送出後重新查詢確認是否刪除成功。 */
+    await fetch(GAS_WEB_APP_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+      body:form.toString()
+    });
+    alert('刪除請求已送出，將重新載入資料確認結果。若資料仍存在，請確認管理者密碼及 GAS 後端回應。');
+    await new Promise(resolve => setTimeout(resolve,1200));
+    await loadRecords();
+  } catch(err) {
+    alert('刪除請求發生錯誤：' + err.message);
+  }
+}
+</script>
+</body>
+</html>
