@@ -929,7 +929,71 @@ function jsonpRequest(url,timeoutMs=20000) {
 
 /* 整理 GAS 回傳資料 */
 
+
+/* =====================================================
+   Google Drive 照片網址處理
+===================================================== */
+
+/* 從照片網址取得 Drive ID */
+function extractDriveId(url) {
+  const s = String(url || '');
+
+  if (!s) return '';
+
+  // 支援 /file/d/ID/view 格式
+  const pathMatch = s.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (pathMatch) return pathMatch[1];
+
+  // 支援 ?id=ID 格式
+  try {
+    const u = new URL(s);
+    const id = u.searchParams.get('id');
+
+    if (id) return id;
+  } catch (err) {
+    // 網址格式不標準時，繼續使用正規表示式
+  }
+
+  const queryMatch = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  return queryMatch ? queryMatch[1] : '';
+}
+
+
+/* 產生 Google Drive 縮圖網址 */
+function getThumbnailUrl(fileId) {
+  if (!fileId) return '';
+
+  return 'https://drive.google.com/thumbnail?id='
+    + encodeURIComponent(fileId)
+    + '&sz=w800';
+}
+
+
+/* =====================================================
+   資料格式整理
+===================================================== */
+
 function normalizeRecord(raw) {
+
+  const fileUrl =
+    raw.fileUrl ??
+    raw.photoUrl ??
+    raw.imageUrl ??
+    raw.photoLink ??
+    raw.url ??
+    '';
+
+  const fileId =
+    raw.fileId ??
+    raw.photoId ??
+    extractDriveId(fileUrl) ??
+    '';
+
+  const thumbnailUrl =
+    raw.thumbnailUrl ||
+    getThumbnailUrl(fileId);
 
   return {
 
@@ -945,19 +1009,20 @@ function normalizeRecord(raw) {
     issue:
       raw.issue ?? raw.issues ?? '',
 
-    fileUrl:
-      raw.fileUrl ?? raw.photoUrl ??
-      raw.imageUrl ?? raw.photoLink ?? raw.url ?? '',
+    fileUrl: fileUrl,
 
-    fileId:
-      raw.fileId ?? raw.photoId ?? ''
+    fileId: fileId,
+
+    thumbnailUrl: thumbnailUrl
 
   };
 
 }
 
 
-/* 載入資料 */
+/* =====================================================
+   載入資料
+===================================================== */
 
 async function loadRecords() {
 
@@ -973,9 +1038,11 @@ async function loadRecords() {
     const data = await jsonpRequest(GAS_WEB_APP_URL);
 
     if (!data || data.result === 'error') {
+
       throw new Error(
         (data && data.error) || 'GAS 回傳資料格式不正確'
       );
+
     }
 
     const source =
@@ -985,9 +1052,11 @@ async function loadRecords() {
       Array.isArray(data.rows) ? data.rows : null;
 
     if (!source) {
+
       throw new Error(
         '查詢回傳內容沒有 records/data/items/rows 陣列，請核對 GAS doGet 回傳格式。'
       );
+
     }
 
     allRecords = source.map(normalizeRecord);
@@ -1003,7 +1072,7 @@ async function loadRecords() {
 
     recordsLoaded = false;
 
-    status.textContent = '載入失敗：'+err.message;
+    status.textContent = '載入失敗：' + err.message;
 
     document.getElementById('recordList').innerHTML =
       `<div class="bg-white rounded-xl p-4 text-sm text-red-600">${escapeHtml(err.message)}</div>`;
@@ -1013,7 +1082,9 @@ async function loadRecords() {
 }
 
 
-/* 日期解析 */
+/* =====================================================
+   日期解析
+===================================================== */
 
 function parseRecordDate(value) {
 
@@ -1025,6 +1096,7 @@ function parseRecordDate(value) {
 
   if (!Number.isNaN(d.getTime())) return d;
 
+  // 支援 yyyy-MM-dd HH:mm:ss
   const m = s.match(
     /^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/
   );
@@ -1033,11 +1105,11 @@ function parseRecordDate(value) {
 
     return new Date(
       +m[1],
-      +m[2]-1,
+      +m[2] - 1,
       +m[3],
-      +(m[4]||0),
-      +(m[5]||0),
-      +(m[6]||0)
+      +(m[4] || 0),
+      +(m[5] || 0),
+      +(m[6] || 0)
     );
 
   }
@@ -1047,7 +1119,9 @@ function parseRecordDate(value) {
 }
 
 
-/* 篩選資料 */
+/* =====================================================
+   篩選資料
+===================================================== */
 
 function getFilteredRecords() {
 
@@ -1069,28 +1143,28 @@ function getFilteredRecords() {
 
     if (
       area &&
-      !String(r.issue).startsWith('['+area+']')
+      !String(r.issue).startsWith('[' + area + ']')
     ) return false;
 
     const d = parseRecordDate(r.timestamp);
 
     if (
       from &&
-      (!d || d < new Date(from+'T00:00:00'))
+      (!d || d < new Date(from + 'T00:00:00'))
     ) return false;
 
     if (
       to &&
-      (!d || d > new Date(to+'T23:59:59'))
+      (!d || d > new Date(to + 'T23:59:59'))
     ) return false;
 
     return true;
 
-  }).sort((a,b) => {
+  }).sort((a, b) => {
 
     return (
-      (parseRecordDate(b.timestamp)?.getTime()||0) -
-      (parseRecordDate(a.timestamp)?.getTime()||0)
+      (parseRecordDate(b.timestamp)?.getTime() || 0) -
+      (parseRecordDate(a.timestamp)?.getTime() || 0)
     );
 
   });
@@ -1098,22 +1172,26 @@ function getFilteredRecords() {
 }
 
 
-/* HTML 安全處理 */
+/* =====================================================
+   HTML 安全處理
+===================================================== */
 
 function escapeHtml(value) {
 
-  return String(value ?? '').replace(/[&<>"']/g,ch => ({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#39;'
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
   }[ch]));
 
 }
 
 
-/* 統計資料 */
+/* =====================================================
+   統計資料
+===================================================== */
 
 function renderStats(records) {
 
@@ -1121,10 +1199,10 @@ function renderStats(records) {
     records.length;
 
   document.getElementById('statClasses').textContent =
-    new Set(records.map(r=>r.className).filter(Boolean)).size;
+    new Set(records.map(r => r.className).filter(Boolean)).size;
 
   document.getElementById('statPhotos').textContent =
-    records.filter(r=>r.fileUrl).length;
+    records.filter(r => r.fileUrl || r.fileId).length;
 
   const classCounts = {};
   const issueCounts = {};
@@ -1134,32 +1212,32 @@ function renderStats(records) {
     const className = r.className || '未標示班級';
 
     classCounts[className] =
-      (classCounts[className]||0)+1;
+      (classCounts[className] || 0) + 1;
 
-    let text = String(r.issue||'')
-      .replace(/^\[(教室|廁所)\]\s*/,'');
+    let text = String(r.issue || '')
+      .replace(/^\[(教室|廁所)\]\s*/, '');
 
     text.split(/[、,，\n]/)
-      .map(x=>x.trim())
+      .map(x => x.trim())
       .filter(Boolean)
       .forEach(item => {
 
         issueCounts[item] =
-          (issueCounts[item]||0)+1;
+          (issueCounts[item] || 0) + 1;
 
       });
 
   });
 
   const classEntries =
-    Object.entries(classCounts).sort((a,b)=>b[1]-a[1]);
+    Object.entries(classCounts).sort((a, b) => b[1] - a[1]);
 
   const issueEntries =
-    Object.entries(issueCounts).sort((a,b)=>b[1]-a[1]);
+    Object.entries(issueCounts).sort((a, b) => b[1] - a[1]);
 
   document.getElementById('classStats').innerHTML =
     classEntries.length
-      ? classEntries.map(([k,v]) =>
+      ? classEntries.map(([k, v]) =>
           `<div class="flex justify-between border-b py-1">
             <span>${escapeHtml(k)}</span><b>${v} 筆</b>
           </div>`
@@ -1168,7 +1246,7 @@ function renderStats(records) {
 
   document.getElementById('issueStats').innerHTML =
     issueEntries.length
-      ? issueEntries.map(([k,v]) =>
+      ? issueEntries.map(([k, v]) =>
           `<div class="flex justify-between border-b py-1 gap-3">
             <span>${escapeHtml(k)}</span>
             <b>${v} 次</b>
@@ -1179,7 +1257,9 @@ function renderStats(records) {
 }
 
 
-/* 紀錄列表 */
+/* =====================================================
+   紀錄列表及照片縮圖
+===================================================== */
 
 function renderRecords() {
 
@@ -1198,31 +1278,99 @@ function renderRecords() {
 
   }
 
-  list.innerHTML = records.map((r,index) => {
+  list.innerHTML = records.map((r, index) => {
 
     const area =
-      (String(r.issue).match(/^\[(教室|廁所)\]/)||[])[1] || '未分類';
+      (String(r.issue).match(/^\[(教室|廁所)\]/) || [])[1] || '未分類';
 
     const issueText =
-      String(r.issue||'').replace(/^\[(教室|廁所)\]\s*/,'');
+      String(r.issue || '').replace(/^\[(教室|廁所)\]\s*/, '');
 
-    const photo = r.fileUrl
-      ? `<a href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">
-           <img class="record-photo mt-3"
-             loading="lazy"
-             src="${escapeHtml(r.fileUrl)}"
-             alt="評分照片">
-         </a>
-         <a class="text-xs text-blue-700 underline" href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">另開照片</a>`
-      : '<p class="text-xs text-slate-400 mt-2">無照片連結</p>';
+    /* 照片顯示 */
+
+    let photo = '';
+
+    if (r.fileUrl || r.thumbnailUrl) {
+
+      if (r.thumbnailUrl) {
+
+        photo = `
+          <div class="mt-3">
+
+            <a href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}"
+               target="_blank"
+               rel="noopener">
+
+              <img
+                class="record-photo"
+                loading="lazy"
+                src="${escapeHtml(r.thumbnailUrl)}"
+                alt="評分照片"
+                onerror="
+                  this.style.display='none';
+                  this.nextElementSibling.style.display='block';
+                "
+              >
+
+              <div
+                class="text-xs text-red-500 mt-2"
+                style="display:none;">
+                照片縮圖載入失敗，請點擊下方連結查看原始照片。
+              </div>
+
+            </a>
+
+            <a
+              class="text-xs text-blue-700 underline mt-2 inline-block"
+              href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}"
+              target="_blank"
+              rel="noopener">
+              另開照片
+            </a>
+
+          </div>
+        `;
+
+      } else {
+
+        photo = `
+          <p class="text-xs text-red-500 mt-2">
+            無法取得照片縮圖網址
+          </p>
+
+          <a
+            class="text-xs text-blue-700 underline"
+            href="${escapeHtml(r.fileUrl)}"
+            target="_blank"
+            rel="noopener">
+            另開照片
+          </a>
+        `;
+
+      }
+
+    } else {
+
+      photo = '<p class="text-xs text-slate-400 mt-2">無照片連結</p>';
+
+    }
+
+
+    /* 刪除按鈕 */
 
     const deleteButton = adminPassword
-      ? `<button type="button"
-           class="deleteRecordBtn mt-3 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2"
-           data-index="${index}">
-           刪除此筆紀錄及照片
-         </button>`
+      ? `
+        <button
+          type="button"
+          class="deleteRecordBtn mt-3 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2"
+          data-index="${index}">
+          刪除此筆紀錄及照片
+        </button>
+      `
       : '';
+
+
+    /* 單筆紀錄 */
 
     return `
       <article class="bg-white rounded-xl shadow-sm p-4">
@@ -1230,29 +1378,33 @@ function renderRecords() {
         <div class="flex items-start justify-between gap-2">
 
           <div>
+
             <div class="font-bold">
-              ${escapeHtml(r.className||'未標示班級')}
+
+              ${escapeHtml(r.className || '未標示班級')}
 
               <span class="text-xs font-medium px-2 py-1 rounded-full ${
-                area==='教室'
+                area === '教室'
                   ? 'bg-blue-50 text-blue-700'
-                  : area==='廁所'
+                  : area === '廁所'
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'bg-slate-100 text-slate-600'
               }">
                 ${area}
               </span>
+
             </div>
 
             <div class="text-xs text-slate-500 mt-1">
-              ${escapeHtml(r.timestamp||'未標示時間')}
+              ${escapeHtml(r.timestamp || '未標示時間')}
             </div>
+
           </div>
 
         </div>
 
         <p class="text-sm mt-3 whitespace-pre-wrap break-words">
-          ${escapeHtml(issueText||'未填寫缺失')}
+          ${escapeHtml(issueText || '未填寫缺失')}
         </p>
 
         ${photo}
@@ -1264,9 +1416,12 @@ function renderRecords() {
 
   }).join('');
 
+
+  /* 綁定刪除事件 */
+
   list.querySelectorAll('.deleteRecordBtn').forEach(btn => {
 
-    btn.addEventListener('click',() => {
+    btn.addEventListener('click', () => {
 
       const record =
         records[Number(btn.dataset.index)];
@@ -1280,20 +1435,23 @@ function renderRecords() {
 }
 
 
-/* 篩選按鈕 */
+/* =====================================================
+   篩選按鈕
+===================================================== */
 
-['queryClass','queryArea','dateFrom','dateTo'].forEach(id => {
+['queryClass', 'queryArea', 'dateFrom', 'dateTo'].forEach(id => {
 
-  document.getElementById(id).addEventListener('change',renderRecords);
+  document.getElementById(id).addEventListener('change', renderRecords);
 
 });
 
 document.getElementById('applyFilterBtn').onclick =
   renderRecords;
 
+
 document.getElementById('clearFilterBtn').onclick = () => {
 
-  ['queryClass','queryArea','dateFrom','dateTo'].forEach(id => {
+  ['queryClass', 'queryArea', 'dateFrom', 'dateTo'].forEach(id => {
 
     document.getElementById(id).value = '';
 
@@ -1302,6 +1460,7 @@ document.getElementById('clearFilterBtn').onclick = () => {
   renderRecords();
 
 };
+
 
 document.getElementById('reloadBtn').onclick =
   loadRecords;
@@ -1346,31 +1505,24 @@ document.getElementById('adminLoginBtn').onclick = () => {
 };
 
 
-/* 從照片網址取得 Drive ID */
-
-function extractDriveId(url) {
-
-  const s = String(url||'');
-
-  const m = s.match(/[-\w]{25,}/);
-
-  return m ? m[0] : '';
-
-}
-
-
-/* 刪除紀錄 */
+/* =====================================================
+   刪除紀錄
+===================================================== */
 
 async function deleteRecord(record) {
 
   if (!adminPassword) {
+
     alert('請先登入管理者。');
+
     return;
+
   }
 
   if (!confirm(
     `確定刪除這筆紀錄？\n\n${record.className}\n${record.timestamp}\n${record.issue}`
   )) return;
+
 
   if (!record.rowNumber) {
 
@@ -1382,26 +1534,28 @@ async function deleteRecord(record) {
 
   }
 
+
   const form = new URLSearchParams();
 
-  form.set('action','delete');
+  form.set('action', 'delete');
 
-  form.set('rowNumber',String(record.rowNumber));
+  form.set('rowNumber', String(record.rowNumber));
 
   form.set(
     'fileId',
     String(record.fileId || extractDriveId(record.fileUrl) || '')
   );
 
-  form.set('className',String(record.className||''));
+  form.set('className', String(record.className || ''));
 
-  form.set('timestamp',String(record.timestamp||''));
+  form.set('timestamp', String(record.timestamp || ''));
 
-  form.set('issue',String(record.issue||''));
+  form.set('issue', String(record.issue || ''));
 
-  form.set('fileUrl',String(record.fileUrl||''));
+  form.set('fileUrl', String(record.fileUrl || ''));
 
-  form.set('password',adminPassword);
+  form.set('password', adminPassword);
+
 
   try {
 
@@ -1413,12 +1567,12 @@ async function deleteRecord(record) {
     await fetch(
       GAS_WEB_APP_URL,
       {
-        method:'POST',
-        mode:'no-cors',
-        headers:{
-          'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
         },
-        body:form.toString()
+        body: form.toString()
       }
     );
 
@@ -1426,19 +1580,14 @@ async function deleteRecord(record) {
       '刪除請求已送出，將重新載入資料確認結果。若資料仍存在，請確認管理者密碼及 GAS 後端回應。'
     );
 
-    await new Promise(resolve=>setTimeout(resolve,1200));
+    await new Promise(resolve => setTimeout(resolve, 1200));
 
     await loadRecords();
 
   } catch(err) {
 
-    alert('刪除請求發生錯誤：'+err.message);
+    alert('刪除請求發生錯誤：' + err.message);
 
   }
 
 }
-
-</script>
-
-</body>
-</html>
