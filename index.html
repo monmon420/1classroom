@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>校園整潔評分上傳系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+    <header class="bg-blue-600 text-white py-4 px-6 shadow-md sticky top-0 z-50">
+        <h1 class="text-lg font-bold text-center">🧹 校園整潔評分拍照系統</h1>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-4">
+        <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
+            <h2 class="font-semibold text-blue-600 border-b pb-2">1. 評分基本資料</h2>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">受評班級</label>
+                <select id="classSelect" class="w-full border border-slate-300 rounded-lg p-2.5 text-base bg-white">
+                    <option value="">請選擇班級</option>
+                    <option value="商一1">商一1</option><option value="國一1">國一1</option>
+                    <option value="航一1">航一1</option><option value="電一1">電一1</option>
+                    <option value="資一1">資一1</option><option value="廣一1">廣一1</option>
+                    <option value="美一1">美一1</option><option value="英一1">英一1</option>
+                    <option value="日一1">日一1</option><option value="高一1">高一1</option>
+                    <option value="高一2">高一2</option><option value="高一3">高一3</option>
+                    <option value="高一4">高一4</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-2">巡查區域</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="classroomTab" class="py-2.5 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold">🏫 教室</button>
+                    <button type="button" id="toiletTab" class="py-2.5 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold">🚻 廁所</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-2">缺失項目（可複選）</label>
+                <div id="issueList" class="grid grid-cols-2 gap-2 mb-2"></div>
+                <input type="text" id="otherIssueInput" placeholder="其他補充說明（選填）" class="w-full border border-slate-300 rounded-lg p-2 text-sm">
+            </div>
+        </section>
+
+        <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
+            <h2 class="font-semibold text-blue-600 border-b pb-2">2. 現場拍照蒐證</h2>
+            <div id="uploadContainer" class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-6 bg-blue-50 relative cursor-pointer active:bg-blue-100 transition">
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20">
+                <div class="text-center space-y-2 pointer-events-none">
+                    <svg class="w-12 h-12 mx-auto text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0118.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    <p class="text-base font-bold text-blue-700">點擊此處開啟相機拍照</p>
+                    <p class="text-xs text-slate-500">拍照後會先顯示浮水印照片供確認</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+            <h3 class="font-semibold text-slate-700">☁️ 雲端上傳進度</h3>
+            <div class="grid grid-cols-3 gap-2 text-center text-sm">
+                <div class="bg-blue-50 rounded-lg p-2"><div class="text-blue-600 font-bold text-xl" id="queueCount">0</div><div class="text-slate-500">等待上傳</div></div>
+                <div class="bg-amber-50 rounded-lg p-2"><div class="text-amber-600 font-bold text-xl" id="uploadingCount">0</div><div class="text-slate-500">上傳中</div></div>
+                <div class="bg-green-50 rounded-lg p-2"><div class="text-green-600 font-bold text-xl" id="successCount">0</div><div class="text-slate-500">已完成</div></div>
+            </div>
+            <p id="uploadStatus" class="text-xs text-slate-500">目前沒有待上傳照片</p>
+            <p id="failedCount" class="text-xs text-red-600"></p>
+        </section>
+    </main>
+
+    <!-- 拍照後立即跳出的確認視窗 -->
+    <div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/80 p-3 flex items-center justify-center">
+        <div class="bg-white rounded-2xl w-full max-w-lg max-h-[94vh] overflow-y-auto p-4 space-y-3 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <h2 class="font-bold text-lg text-slate-800">📷 確認照片與浮水印</h2>
+                <span class="text-xs text-slate-500">請確認內容正確</span>
+            </div>
+            <canvas id="previewCanvas" class="w-full max-h-[58vh] object-contain rounded-lg bg-slate-100"></canvas>
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" id="retakeBtn" class="py-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold">↩ 重新拍攝</button>
+                <button type="button" id="submitBtn" disabled class="py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold">✓ 確認並上傳</button>
+            </div>
+            <p class="text-xs text-slate-500 text-center">確認後會立即加入背景上傳，並保留目前班級及巡查區域。</p>
+        </div>
+    </div>
+
+    <script>
+        const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwSIY16FbgW1-YeuqUiXm9AtRDv9V0SN-1dPoOx35YtT-j5GX8tvdpbOJMnxz2xHma_GA/exec";
+
+        const cameraInput = document.getElementById('cameraInput');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewModal = document.getElementById('previewModal');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const classSelect = document.getElementById('classSelect');
+        const issueList = document.getElementById('issueList');
+        const otherIssueInput = document.getElementById('otherIssueInput');
+        const classroomTab = document.getElementById('classroomTab');
+        const toiletTab = document.getElementById('toiletTab');
+
+        const issueOptions = {
+            classroom: [
+                ['垃圾、回收未倒', '🗑️ 垃圾、回收未倒'],
+                ['地面髒亂', '🥤 地面髒亂'],
+                ['玻璃窗台未擦', '🪟 玻璃窗台未擦'],
+                ['黑板未擦', '⬛ 黑板未擦'],
+                ['桌椅未整齊', '🪑 桌椅未整齊'],
+                ['櫃子雜物', '🗄️ 櫃子雜物'],
+                ['洗手臺髒亂', '🚰 洗手臺髒亂'],
+                ['掃具凌亂、水桶未倒放', '🪣 掃具凌亂、水桶未倒放']
+            ],
+            toilet: [
+                ['地面髒亂', '🥤 地面髒亂'],
+                ['洗手臺、鏡子未擦', '🚰 洗手臺、鏡子未擦'],
+                ['馬桶小便斗未刷', '🚽 馬桶小便斗未刷'],
+                ['垃圾未倒', '🗑️ 垃圾未倒'],
+                ['掃具凌亂、水桶未倒放', '🪣 掃具凌亂、水桶未倒放']
+            ]
+        };
+        let currentArea = 'classroom';
+        let loadedImage = null;
+        let uploadQueue = [];
+        let isUploading = false;
+        let totalSuccess = 0;
+        let totalFailed = 0;
+
+        function renderIssueOptions() {
+            issueList.innerHTML = '';
+            issueOptions[currentArea].forEach(([value, label]) => {
+                const wrapper = document.createElement('label');
+                wrapper.className = 'flex items-center gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-200';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'issue';
+                checkbox.value = value;
+                checkbox.className = 'w-4 h-4 text-blue-600 rounded shrink-0';
+                checkbox.addEventListener('change', () => {
+                    checkFormReady();
+                    if (loadedImage) drawWatermarkedImage();
+                });
+                const span = document.createElement('span');
+                span.textContent = label;
+                wrapper.append(checkbox, span);
+                issueList.appendChild(wrapper);
+            });
+            checkFormReady();
+        }
+
+        function setArea(area) {
+            currentArea = area;
+            const active = 'py-2.5 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold';
+            const inactive = 'py-2.5 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold';
+            classroomTab.className = area === 'classroom' ? active : inactive;
+            toiletTab.className = area === 'toilet' ? active : inactive;
+            renderIssueOptions();
+            if (loadedImage) drawWatermarkedImage();
+        }
+        classroomTab.addEventListener('click', () => setArea('classroom'));
+        toiletTab.addEventListener('click', () => setArea('toilet'));
+
+        function getSelectedIssues() {
+            const selected = Array.from(document.querySelectorAll('input[name="issue"]:checked')).map(cb => cb.value);
+            if (otherIssueInput.value.trim()) selected.push(otherIssueInput.value.trim());
+            return selected.join('、');
+        }
+
+        function checkFormReady() {
+            const hasIssue = document.querySelectorAll('input[name="issue"]:checked').length > 0 || otherIssueInput.value.trim() !== '';
+            submitBtn.disabled = !(classSelect.value && hasIssue && loadedImage);
+        }
+
+        classSelect.addEventListener('change', () => {
+            checkFormReady();
+            if (loadedImage) drawWatermarkedImage();
+        });
+        otherIssueInput.addEventListener('input', () => {
+            checkFormReady();
+            if (loadedImage) drawWatermarkedImage();
+        });
+
+        cameraInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    loadedImage = img;
+                    drawWatermarkedImage();
+                    previewModal.classList.remove('hidden');
+                    checkFormReady();
+                };
+                img.onerror = () => alert('圖片載入失敗，請重新拍攝或選擇照片。');
+                img.src = event.target.result;
+            };
+            reader.onerror = () => alert('讀取照片失敗，請重新拍攝。');
+            reader.readAsDataURL(file);
+        });
+
+        function clearCurrentPhoto() {
+            cameraInput.value = '';
+            loadedImage = null;
+            previewModal.classList.add('hidden');
+            previewCanvas.width = 0;
+            previewCanvas.height = 0;
+            checkFormReady();
+        }
+        retakeBtn.addEventListener('click', clearCurrentPhoto);
+
+        function drawWatermarkedImage() {
+            if (!loadedImage) return;
+            const canvas = previewCanvas;
+            const ctx = canvas.getContext('2d');
+            const targetWidth = Math.min(1200, loadedImage.width);
+            const scale = targetWidth / loadedImage.width;
+            canvas.width = targetWidth;
+            canvas.height = Math.round(loadedImage.height * scale);
+            ctx.drawImage(loadedImage, 0, 0, canvas.width, canvas.height);
+
+            const className = '班級：' + (classSelect.value || '未選');
+            const areaName = currentArea === 'classroom' ? '教室' : '廁所';
+            const issueText = '區域：' + areaName + '　缺失：' + (getSelectedIssues() || '未填');
+            const now = new Date();
+            const timeStr = '時間：' + now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0') + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+            const barHeight = Math.max(130, Math.round(canvas.width * 0.12));
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.68)';
+            ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'left';
+            ctx.font = `bold ${Math.max(26, Math.round(canvas.width * 0.032))}px sans-serif`;
+            ctx.fillText(className, 24, canvas.height - barHeight + 42);
+            ctx.font = `${Math.max(22, Math.round(canvas.width * 0.027))}px sans-serif`;
+            const maxTextWidth = canvas.width - 48;
+            let displayIssue = issueText;
+            while (ctx.measureText(displayIssue).width > maxTextWidth && displayIssue.length > 8) displayIssue = displayIssue.slice(0, -2) + '…';
+            ctx.fillText(displayIssue, 24, canvas.height - 24);
+            ctx.textAlign = 'right';
+            ctx.font = `${Math.max(18, Math.round(canvas.width * 0.02))}px sans-serif`;
+            ctx.fillStyle = '#E2E8F0';
+            ctx.fillText(timeStr, canvas.width - 24, canvas.height - barHeight + 42);
+            ctx.textAlign = 'left';
+        }
+
+        function updateUploadStatus() {
+            document.getElementById('queueCount').textContent = uploadQueue.length;
+            document.getElementById('uploadingCount').textContent = isUploading ? 1 : 0;
+            document.getElementById('successCount').textContent = totalSuccess;
+            document.getElementById('failedCount').textContent = totalFailed > 0 ? `⚠️ 失敗 ${totalFailed} 張，請檢查網路或雲端紀錄` : '';
+            const status = document.getElementById('uploadStatus');
+            if (isUploading && uploadQueue.length > 0) status.textContent = `正在上傳照片，另有 ${uploadQueue.length} 張等待中`;
+            else if (isUploading) status.textContent = '正在上傳最後一張照片...';
+            else if (uploadQueue.length > 0) status.textContent = `尚有 ${uploadQueue.length} 張照片等待上傳`;
+            else status.textContent = '目前沒有待上傳照片';
+        }
+
+        async function processUploadQueue() {
+            if (isUploading) return;
+            isUploading = true;
+            updateUploadStatus();
+            while (uploadQueue.length > 0) {
+                const payload = uploadQueue.shift();
+                updateUploadStatus();
+                try {
+                    const response = await fetch(GAS_WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const result = await response.json();
+                    if (result.result === 'success') totalSuccess++;
+                    else { totalFailed++; console.error('雲端回報上傳失敗：', result.error); }
+                } catch (err) {
+                    totalFailed++;
+                    console.error('照片上傳錯誤：', err);
+                }
+                updateUploadStatus();
+            }
+            isUploading = false;
+            updateUploadStatus();
+        }
+
+        submitBtn.addEventListener('click', function() {
+            if (!loadedImage || !classSelect.value || submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            try {
+                drawWatermarkedImage();
+                const imageData = previewCanvas.toDataURL('image/jpeg', 0.85);
+                const className = classSelect.value;
+                const issue = `[${currentArea === 'classroom' ? '教室' : '廁所'}] ${getSelectedIssues()}`;
+                const timestamp = new Date().toLocaleString();
+                const fileName = `整潔評分_${className}_${Date.now()}.jpg`;
+                uploadQueue.push({ className, issue, timestamp, fileName, imageData });
+                updateUploadStatus();
+
+                // 保留班級及區域，只清空本張照片的缺失項目
+                document.querySelectorAll('input[name="issue"]').forEach(cb => cb.checked = false);
+                otherIssueInput.value = '';
+                clearCurrentPhoto();
+                processUploadQueue();
+            } catch (err) {
+                alert('照片處理失敗：' + err.message);
+                checkFormReady();
+            }
+        });
+
+        renderIssueOptions();
+        updateUploadStatus();
+    </script>
+</body>
+</html>
