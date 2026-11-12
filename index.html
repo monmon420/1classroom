@@ -6,189 +6,314 @@
 <title>華南高商校園整潔評分系統</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-body { -webkit-tap-highlight-color: transparent; }
-.hidden { display: none !important; }
-.record-photo {
-  display: block;
-  width: 100%;
-  max-width: 500px;
-  height: auto;
-  max-height: 360px;
-  object-fit: contain;
-  background: #f1f5f9;
-  border-radius: 12px;
-}
-button:disabled { opacity:.55; cursor:not-allowed; }
+  :root {
+    --morandi-bg: #F2EDE6;
+    --morandi-card: #FBF8F3;
+    --morandi-primary: #7A9E9F;
+    --morandi-primary-dark: #5E8283;
+    --morandi-accent: #C9A9A6;
+    --morandi-sage: #A8B5A2;
+    --morandi-rose: #D4A5A5;
+    --morandi-cream: #E8DFD0;
+    --morandi-text: #4A4540;
+    --morandi-muted: #8A837A;
+    --morandi-border: #D6CFC4;
+    --morandi-shadow: rgba(90, 80, 70, 0.12);
+  }
+
+  body {
+    -webkit-tap-highlight-color: transparent;
+    background-color: var(--morandi-bg);
+    color: var(--morandi-text);
+    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  }
+
+  .hidden { display: none !important; }
+
+  /* 普普風粗線條與圓角 */
+  .pop-card {
+    background: var(--morandi-card);
+    border: 3px solid var(--morandi-border);
+    border-radius: 20px;
+    box-shadow: 6px 6px 0 var(--morandi-shadow);
+  }
+
+  .pop-btn {
+    border: 3px solid var(--morandi-primary-dark);
+    border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--morandi-shadow);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .pop-btn:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 var(--morandi-shadow);
+  }
+
+  .pop-tab-active {
+    background: var(--morandi-primary);
+    color: white;
+    border: 3px solid var(--morandi-primary-dark);
+    box-shadow: 3px 3px 0 var(--morandi-shadow);
+  }
+  .pop-tab-inactive {
+    background: var(--morandi-card);
+    color: var(--morandi-muted);
+    border: 3px solid var(--morandi-border);
+  }
+
+  .record-photo {
+    display: block;
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    max-height: 360px;
+    object-fit: contain;
+    background: var(--morandi-cream);
+    border-radius: 14px;
+    border: 3px solid var(--morandi-border);
+  }
+
+  button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none !important;
+  }
+
+  /* 輕微波點背景（普普風元素，莫蘭迪色） */
+  .pop-dots {
+    background-image: radial-gradient(var(--morandi-border) 1.2px, transparent 1.2px);
+    background-size: 14px 14px;
+  }
+
+  select, input[type="text"], input[type="date"] {
+    border: 2px solid var(--morandi-border);
+    background: var(--morandi-card);
+    color: var(--morandi-text);
+  }
+  select:focus, input:focus {
+    outline: none;
+    border-color: var(--morandi-primary);
+  }
+
+  .issue-item {
+    background: var(--morandi-cream);
+    border: 2px solid var(--morandi-border);
+    border-radius: 12px;
+  }
 </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
-
-<header class="bg-blue-700 text-white py-4 px-4 shadow-md sticky top-0 z-40">
-  <div class="max-w-3xl mx-auto flex items-center justify-between">
-    <button id="homeBtn" class="text-sm font-bold">🧹 校園整潔評分</button>
-    <span id="headerPageName" class="text-sm">首頁</span>
+<body class="min-h-screen pb-12">
+<header class="sticky top-0 z-40" style="background: var(--morandi-primary); color: white; border-bottom: 4px solid var(--morandi-primary-dark);">
+  <div class="max-w-3xl mx-auto flex items-center justify-between py-4 px-4">
+    <button id="homeBtn" class="text-sm font-bold tracking-wide">🧹 校園整潔評分</button>
+    <span id="headerPageName" class="text-sm font-medium opacity-90">首頁</span>
   </div>
 </header>
 
-<main class="max-w-3xl mx-auto p-4 space-y-4">
-
+<main class="max-w-3xl mx-auto p-4 space-y-5">
 <!-- 首頁 -->
-<section id="homePage" class="space-y-4">
-  <div class="bg-white rounded-2xl shadow-sm p-6 text-center space-y-2">
+<section id="homePage" class="space-y-5">
+  <div class="pop-card p-7 text-center space-y-3 pop-dots">
     <div class="text-5xl">🧹</div>
-    <h1 class="text-xl font-bold">華南高商校園整潔評分系統</h1>
-    <p class="text-sm text-slate-500">請選擇要使用的功能</p>
+    <h1 class="text-xl font-bold tracking-wide" style="color: var(--morandi-primary-dark);">華南高商校園整潔評分系統</h1>
+    <p class="text-sm" style="color: var(--morandi-muted);">請選擇要使用的功能</p>
   </div>
-  <button id="goRatingBtn" class="w-full bg-blue-600 text-white rounded-2xl p-5 text-left shadow-sm">
+
+  <button id="goRatingBtn" class="w-full pop-btn p-5 text-left" style="background: var(--morandi-primary); color: white;">
     <div class="text-xl font-bold">📷 評分系統</div>
-    <div class="text-sm mt-1 text-blue-100">選擇班級、巡查區域、拍照並上傳缺失紀錄</div>
+    <div class="text-sm mt-1 opacity-90">選擇班級、巡查區域、拍照並上傳缺失紀錄</div>
   </button>
-  <button id="goQueryBtn" class="w-full bg-white rounded-2xl p-5 text-left shadow-sm border">
+
+  <button id="goQueryBtn" class="w-full pop-btn p-5 text-left" style="background: var(--morandi-card); color: var(--morandi-text);">
     <div class="text-xl font-bold">📊 查看評分</div>
-    <div class="text-sm mt-1 text-slate-500">查詢各班紀錄、查看照片及缺失統計</div>
+    <div class="text-sm mt-1" style="color: var(--morandi-muted);">查詢各班紀錄、查看照片及缺失統計</div>
   </button>
 </section>
 
 <!-- 評分系統 -->
-<section id="ratingPage" class="hidden space-y-4">
-  <button class="backHome text-sm text-blue-700 font-semibold">← 返回首頁</button>
+<section id="ratingPage" class="hidden space-y-5">
+  <button class="backHome text-sm font-bold" style="color: var(--morandi-primary-dark);">← 返回首頁</button>
 
-  <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
-    <h2 class="font-semibold text-blue-700 border-b pb-2">1. 評分基本資料</h2>
+  <section class="pop-card p-5 space-y-4">
+    <h2 class="font-bold text-lg border-b-2 pb-2" style="color: var(--morandi-primary-dark); border-color: var(--morandi-border);">1. 評分基本資料</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div>
-        <label class="block text-sm font-medium mb-1">年級</label>
-        <select id="ratingGrade" class="w-full border rounded-lg p-3 bg-white">
+        <label class="block text-sm font-semibold mb-1">年級</label>
+        <select id="ratingGrade" class="w-full rounded-xl p-3">
           <option value="">請先選擇年級</option>
-          <option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option>
+          <option value="一">一年級</option>
+          <option value="二">二年級</option>
+          <option value="三">三年級</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">受評班級</label>
-        <select id="classSelect" class="w-full border rounded-lg p-3 bg-white" disabled>
+        <label class="block text-sm font-semibold mb-1">受評班級</label>
+        <select id="classSelect" class="w-full rounded-xl p-3" disabled>
           <option value="">請先選擇年級</option>
         </select>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-medium mb-2">巡查區域</label>
+      <label class="block text-sm font-semibold mb-2">巡查區域</label>
       <div class="grid grid-cols-3 gap-2">
-        <button type="button" id="classroomTab" class="py-3 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold">🏫 教室</button>
-        <button type="button" id="toiletTab" class="py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold">🚻 廁所</button>
-        <button type="button" id="outdoorTab" class="py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold">🌳 外掃區</button>
+        <button type="button" id="classroomTab" class="py-3 rounded-xl font-bold pop-tab-active">🏫 教室</button>
+        <button type="button" id="toiletTab" class="py-3 rounded-xl font-bold pop-tab-inactive">🚻 廁所</button>
+        <button type="button" id="outdoorTab" class="py-3 rounded-xl font-bold pop-tab-inactive">🌳 外掃區</button>
       </div>
     </div>
 
     <div>
-      <label class="block text-sm font-medium mb-2">缺失項目（可複選）</label>
+      <label class="block text-sm font-semibold mb-2">缺失項目（可複選）</label>
       <div id="issueList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2"></div>
-      <input type="text" id="otherIssueInput" placeholder="其他補充說明（選填）" class="w-full border rounded-lg p-3 text-sm">
+      <input type="text" id="otherIssueInput" placeholder="其他補充說明（選填）" class="w-full rounded-xl p-3 text-sm">
     </div>
   </section>
 
-  <section class="bg-white p-4 rounded-xl shadow-sm space-y-3">
-    <h2 class="font-semibold text-blue-700 border-b pb-2">2. 現場拍照蒐證</h2>
-    <div class="flex flex-col items-center justify-center border-2 border-dashed border-blue-400 rounded-xl p-7 bg-blue-50 relative">
+  <section class="pop-card p-5 space-y-3">
+    <h2 class="font-bold text-lg border-b-2 pb-2" style="color: var(--morandi-primary-dark); border-color: var(--morandi-border);">2. 現場拍照蒐證</h2>
+    <div class="flex flex-col items-center justify-center rounded-2xl p-7 relative" style="border: 3px dashed var(--morandi-primary); background: var(--morandi-cream);">
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20">
       <div class="text-center space-y-2 pointer-events-none">
         <div class="text-5xl">📷</div>
-        <p class="font-bold text-blue-700">點擊此處開啟相機拍照</p>
-        <p class="text-xs text-slate-500">拍照後會先顯示浮水印照片供確認</p>
+        <p class="font-bold" style="color: var(--morandi-primary-dark);">點擊此處開啟相機拍照</p>
+        <p class="text-xs" style="color: var(--morandi-muted);">拍照後會先顯示浮水印照片供確認</p>
       </div>
     </div>
   </section>
 
   <!-- 上傳進度 -->
-  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
-    <h3 class="font-semibold">☁️ 雲端上傳進度</h3>
+  <section class="pop-card p-5 space-y-3">
+    <h3 class="font-bold">☁️ 雲端上傳進度</h3>
     <div class="grid grid-cols-3 gap-2 text-center text-sm">
-      <div class="bg-blue-50 rounded-lg p-2"><div class="text-blue-600 font-bold text-2xl" id="queueCount">0</div><div class="text-slate-500">等待上傳</div></div>
-      <div class="bg-amber-50 rounded-lg p-2"><div class="text-amber-600 font-bold text-2xl" id="uploadingCount">0</div><div class="text-slate-500">上傳中</div></div>
-      <div class="bg-green-50 rounded-lg p-2"><div class="text-green-600 font-bold text-2xl" id="successCount">0</div><div class="text-slate-500">已完成</div></div>
+      <div class="rounded-xl p-3" style="background: #E0ECEC; border: 2px solid var(--morandi-border);">
+        <div class="font-bold text-2xl" style="color: var(--morandi-primary);" id="queueCount">0</div>
+        <div style="color: var(--morandi-muted);">等待上傳</div>
+      </div>
+      <div class="rounded-xl p-3" style="background: #F5EDE4; border: 2px solid var(--morandi-border);">
+        <div class="font-bold text-2xl" style="color: #C4A35A;" id="uploadingCount">0</div>
+        <div style="color: var(--morandi-muted);">上傳中</div>
+      </div>
+      <div class="rounded-xl p-3" style="background: #E8EFE4; border: 2px solid var(--morandi-border);">
+        <div class="font-bold text-2xl" style="color: var(--morandi-sage);" id="successCount">0</div>
+        <div style="color: var(--morandi-muted);">已完成</div>
+      </div>
     </div>
-    <p id="uploadStatus" class="text-xs text-slate-500">目前沒有待上傳照片</p>
-    <p id="failedCount" class="text-xs text-red-600"></p>
-    <p class="text-xs text-amber-700">提醒：待上傳照片暫存在目前頁面，上傳完成前請勿關閉或重新整理網頁。</p>
+    <p id="uploadStatus" class="text-xs" style="color: var(--morandi-muted);">目前沒有待上傳照片</p>
+    <p id="failedCount" class="text-xs" style="color: var(--morandi-rose);"></p>
+    <p class="text-xs" style="color: #B89B5E;">提醒：待上傳照片暫存在目前頁面，上傳完成前請勿關閉或重新整理網頁。</p>
   </section>
 </section>
 
 <!-- 查看評分 -->
-<section id="queryPage" class="hidden space-y-4">
+<section id="queryPage" class="hidden space-y-5">
   <div class="flex items-center justify-between">
-    <button class="backHome text-sm text-blue-700 font-semibold">← 返回首頁</button>
-    <button id="reloadBtn" class="text-sm bg-blue-100 text-blue-700 px-3 py-2 rounded-lg">↻ 重新整理</button>
+    <button class="backHome text-sm font-bold" style="color: var(--morandi-primary-dark);">← 返回首頁</button>
+    <button id="reloadBtn" class="text-sm font-semibold px-4 py-2 rounded-xl" style="background: #E0ECEC; color: var(--morandi-primary-dark); border: 2px solid var(--morandi-border);">↻ 重新整理</button>
   </div>
 
-  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+  <section class="pop-card p-5 space-y-3">
     <h2 class="font-bold text-lg">📊 評分紀錄查詢</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div>
-        <label class="block text-sm mb-1">年級</label>
-        <select id="queryGrade" class="w-full border rounded-lg p-2.5 bg-white">
+        <label class="block text-sm font-semibold mb-1">年級</label>
+        <select id="queryGrade" class="w-full rounded-xl p-2.5">
           <option value="">全部年級</option>
-          <option value="一">一年級</option><option value="二">二年級</option><option value="三">三年級</option>
+          <option value="一">一年級</option>
+          <option value="二">二年級</option>
+          <option value="三">三年級</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm mb-1">班級</label>
-        <select id="queryClass" class="w-full border rounded-lg p-2.5 bg-white">
+        <label class="block text-sm font-semibold mb-1">班級</label>
+        <select id="queryClass" class="w-full rounded-xl p-2.5">
           <option value="">全部班級</option>
         </select>
       </div>
       <div>
-        <label class="block text-sm mb-1">巡查區域</label>
-        <select id="queryArea" class="w-full border rounded-lg p-2.5 bg-white">
-          <option value="">全部區域</option><option value="教室">教室</option><option value="廁所">廁所</option><option value="外掃區">外掃區</option>
+        <label class="block text-sm font-semibold mb-1">巡查區域</label>
+        <select id="queryArea" class="w-full rounded-xl p-2.5">
+          <option value="">全部區域</option>
+          <option value="教室">教室</option>
+          <option value="廁所">廁所</option>
+          <option value="外掃區">外掃區</option>
         </select>
       </div>
-      <div><label class="block text-sm mb-1">開始日期</label><input type="date" id="dateFrom" class="w-full border rounded-lg p-2.5"></div>
-      <div><label class="block text-sm mb-1">結束日期</label><input type="date" id="dateTo" class="w-full border rounded-lg p-2.5"></div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">開始日期</label>
+        <input type="date" id="dateFrom" class="w-full rounded-xl p-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-semibold mb-1">結束日期</label>
+        <input type="date" id="dateTo" class="w-full rounded-xl p-2.5">
+      </div>
     </div>
-    <div class="grid grid-cols-2 gap-2">
-      <button id="applyFilterBtn" class="bg-blue-600 text-white rounded-lg py-2.5 font-semibold">套用篩選</button>
-      <button id="clearFilterBtn" class="bg-slate-100 rounded-lg py-2.5 font-semibold">清除條件</button>
+    <div class="grid grid-cols-2 gap-3">
+      <button id="applyFilterBtn" class="pop-btn py-2.5 font-bold text-white" style="background: var(--morandi-primary);">套用篩選</button>
+      <button id="clearFilterBtn" class="pop-btn py-2.5 font-bold" style="background: var(--morandi-cream); color: var(--morandi-text);">清除條件</button>
     </div>
-    <p id="queryStatus" class="text-xs text-slate-500">尚未載入資料</p>
+    <p id="queryStatus" class="text-xs" style="color: var(--morandi-muted);">尚未載入資料</p>
   </section>
 
   <!-- 統計 -->
-  <section class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+  <section class="pop-card p-5 space-y-3">
     <h3 class="font-bold">📈 篩選結果統計</h3>
     <div class="grid grid-cols-3 gap-2 text-center">
-      <div class="bg-slate-50 rounded-lg p-3"><div id="statRecords" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">紀錄筆數</div></div>
-      <div class="bg-slate-50 rounded-lg p-3"><div id="statClasses" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">涉及班級</div></div>
-      <div class="bg-slate-50 rounded-lg p-3"><div id="statPhotos" class="text-2xl font-bold text-blue-700">0</div><div class="text-xs text-slate-500">照片數量</div></div>
+      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
+        <div id="statRecords" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
+        <div class="text-xs" style="color: var(--morandi-muted);">紀錄筆數</div>
+      </div>
+      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
+        <div id="statClasses" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
+        <div class="text-xs" style="color: var(--morandi-muted);">涉及班級</div>
+      </div>
+      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
+        <div id="statPhotos" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
+        <div class="text-xs" style="color: var(--morandi-muted);">照片數量</div>
+      </div>
     </div>
-    <div><h4 class="text-sm font-semibold mb-2">各班缺失紀錄數</h4><div id="classStats" class="space-y-1 text-sm"></div></div>
-    <div><h4 class="text-sm font-semibold mb-2">缺失項目分布</h4><div id="issueStats" class="space-y-1 text-sm"></div></div>
+    <div>
+      <h4 class="text-sm font-semibold mb-2">各班缺失紀錄數</h4>
+      <div id="classStats" class="space-y-1 text-sm"></div>
+    </div>
+    <div>
+      <h4 class="text-sm font-semibold mb-2">缺失項目分布</h4>
+      <div id="issueStats" class="space-y-1 text-sm"></div>
+    </div>
   </section>
 
   <!-- 紀錄明細 -->
   <section class="space-y-3">
-    <div class="flex items-center justify-between"><h3 class="font-bold">🗂️ 紀錄明細</h3><button id="adminLoginBtn" class="text-xs border rounded-lg px-3 py-2">管理者登入</button></div>
-    <p id="adminStatus" class="text-xs text-slate-500">一般查詢模式</p>
-    <div id="recordList" class="space-y-3"><div class="bg-white rounded-xl p-5 text-center text-sm text-slate-500">請先載入資料</div></div>
+    <div class="flex items-center justify-between">
+      <h3 class="font-bold">🗂️ 紀錄明細</h3>
+      <button id="adminLoginBtn" class="text-xs px-3 py-2 rounded-xl font-semibold" style="border: 2px solid var(--morandi-border); background: var(--morandi-card);">管理者登入</button>
+    </div>
+    <p id="adminStatus" class="text-xs" style="color: var(--morandi-muted);">一般查詢模式</p>
+    <div id="recordList" class="space-y-3">
+      <div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請先載入資料</div>
+    </div>
   </section>
 </section>
 </main>
 
 <!-- 拍照確認視窗 -->
-<div id="previewModal" class="hidden fixed inset-0 z-[100] bg-black/80 p-3 flex items-center justify-center">
-  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[95vh] overflow-y-auto p-4 space-y-3 shadow-2xl">
-    <div class="flex items-center justify-between"><h2 class="font-bold text-lg">📷 確認照片與浮水印</h2><span class="text-xs text-slate-500">確認內容正確</span></div>
-    <canvas id="previewCanvas" class="w-full max-h-[58vh] object-contain rounded-lg bg-slate-100"></canvas>
-    <div class="grid grid-cols-2 gap-3">
-      <button id="retakeBtn" class="py-3 rounded-xl bg-slate-200 font-bold">↩ 重新拍攝</button>
-      <button id="submitBtn" disabled class="py-3 rounded-xl bg-blue-600 text-white font-bold">✓ 確認並上傳</button>
+<div id="previewModal" class="hidden fixed inset-0 z-[100] p-3 flex items-center justify-center" style="background: rgba(74, 69, 64, 0.75);">
+  <div class="w-full max-w-lg max-h-[95vh] overflow-y-auto p-5 space-y-4" style="background: var(--morandi-card); border: 4px solid var(--morandi-primary); border-radius: 24px; box-shadow: 8px 8px 0 var(--morandi-shadow);">
+    <div class="flex items-center justify-between">
+      <h2 class="font-bold text-lg" style="color: var(--morandi-primary-dark);">📷 確認照片與浮水印</h2>
+      <span class="text-xs" style="color: var(--morandi-muted);">確認內容正確</span>
     </div>
-    <p class="text-xs text-slate-500 text-center">確認後會立即加入背景上傳，並保留目前班級及巡查區域。</p>
+    <canvas id="previewCanvas" class="w-full max-h-[58vh] object-contain rounded-xl" style="background: var(--morandi-cream); border: 3px solid var(--morandi-border);"></canvas>
+    <div class="grid grid-cols-2 gap-3">
+      <button id="retakeBtn" class="py-3 rounded-xl font-bold pop-btn" style="background: var(--morandi-cream);">↩ 重新拍攝</button>
+      <button id="submitBtn" disabled class="py-3 rounded-xl font-bold pop-btn text-white" style="background: var(--morandi-primary);">✓ 確認並上傳</button>
+    </div>
+    <p class="text-xs text-center" style="color: var(--morandi-muted);">確認後會立即加入背景上傳，並保留目前班級及巡查區域。</p>
   </div>
 </div>
 
 <script>
 'use strict';
-
 /* =====================================================
    GAS 第 5 版部署網址
 ===================================================== */
@@ -199,7 +324,6 @@ const GAS_WEB_APP_URL =
    頁面切換
 ===================================================== */
 const pageIds = ['homePage','ratingPage','queryPage'];
-
 function showPage(page) {
   pageIds.forEach(id => {
     document.getElementById(id).classList.toggle('hidden',id !== page);
@@ -210,7 +334,6 @@ function showPage(page) {
   window.scrollTo(0,0);
   if (page === 'queryPage' && !recordsLoaded) loadRecords();
 }
-
 document.getElementById('goRatingBtn').onclick = () => showPage('ratingPage');
 document.getElementById('goQueryBtn').onclick = () => showPage('queryPage');
 document.getElementById('homeBtn').onclick = () => showPage('homePage');
@@ -225,6 +348,7 @@ const cameraInput = document.getElementById('cameraInput');
 const previewCanvas = document.getElementById('previewCanvas');
 const previewModal = document.getElementById('previewModal');
 const submitBtn = document.getElementById('submitBtn');
+
 const CLASS_GROUPS = {
   '一': ['商一1','國一1','航一1','電一1','資一1','廣一1','美一1','英一1','日一1','觀一1','高一1','高一2','高一3','高一4'],
   '二': ['商二1','觀二1','國二1','國二2','電二1','資二1','廣二1','美二1','英二1','英二2','高二1','高二2','高二3','高二4'],
@@ -253,7 +377,9 @@ const issueList = document.getElementById('issueList');
 const otherIssueInput = document.getElementById('otherIssueInput');
 const ratingGrade = document.getElementById('ratingGrade');
 const queryGrade = document.getElementById('queryGrade');
+
 populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
+
 ratingGrade.addEventListener('change', () => {
   populateClassOptions(classSelect, ratingGrade.value, ratingGrade.value ? '請選擇班級' : '請先選擇年級');
   classSelect.disabled = !ratingGrade.value;
@@ -309,7 +435,7 @@ function renderIssueOptions() {
   issueList.innerHTML = '';
   issueOptions[currentArea].forEach(([value,label]) => {
     const wrapper = document.createElement('label');
-    wrapper.className = 'flex items-center gap-2 text-sm bg-slate-50 p-3 rounded-lg border';
+    wrapper.className = 'issue-item flex items-center gap-2 text-sm p-3';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.name = 'issue';
@@ -330,11 +456,9 @@ function renderIssueOptions() {
 /* 區域切換 */
 function setArea(area) {
   currentArea = area;
-  const active = 'py-3 rounded-lg border-2 border-blue-600 bg-blue-50 text-blue-700 font-bold';
-  const inactive = 'py-3 rounded-lg border-2 border-slate-200 bg-white text-slate-600 font-bold';
-  classroomTab.className = area === 'classroom' ? active : inactive;
-  toiletTab.className = area === 'toilet' ? active : inactive;
-  outdoorTab.className = area === 'outdoor' ? active : inactive;
+  classroomTab.className = area === 'classroom' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
+  toiletTab.className = area === 'toilet' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
+  outdoorTab.className = area === 'outdoor' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
   renderIssueOptions();
   if (loadedImage) drawWatermarkedImage();
 }
@@ -357,7 +481,6 @@ function checkFormReady() {
     otherIssueInput.value.trim() !== '';
   submitBtn.disabled = !(classSelect.value && hasIssue && loadedImage);
 }
-
 classSelect.addEventListener('change',() => {
   checkFormReady();
   if (loadedImage) drawWatermarkedImage();
@@ -423,7 +546,6 @@ function drawWatermarkedImage() {
   previewCanvas.width = targetWidth;
   previewCanvas.height = Math.round(loadedImage.height * scale);
   ctx.drawImage(loadedImage,0,0,previewCanvas.width,previewCanvas.height);
-
   const className = '班級：' + (classSelect.value || '未選');
   const areaName =
     currentArea === 'classroom' ? '教室' :
@@ -436,7 +558,6 @@ function drawWatermarkedImage() {
     String(now.getDate()).padStart(2,'0') + ' ' +
     String(now.getHours()).padStart(2,'0') + ':' +
     String(now.getMinutes()).padStart(2,'0');
-
   /* 放大班級文字後，同步增加底部浮水印區高度 */
   const barHeight = Math.max(180,Math.round(previewCanvas.width * .15));
   ctx.fillStyle = 'rgba(0,0,0,.72)';
@@ -627,7 +748,7 @@ async function loadRecords() {
   const status = document.getElementById('queryStatus');
   status.textContent = '資料載入中…';
   document.getElementById('recordList').innerHTML =
-    '<div class="bg-white rounded-xl p-5 text-center">資料載入中…</div>';
+    '<div class="pop-card p-5 text-center">資料載入中…</div>';
   try {
     const data = await jsonpRequest(GAS_WEB_APP_URL);
     if (!data || data.result === 'error') {
@@ -649,7 +770,7 @@ async function loadRecords() {
     recordsLoaded = false;
     status.textContent = '載入失敗：' + err.message;
     document.getElementById('recordList').innerHTML =
-      `<div class="bg-white rounded-xl p-4 text-sm text-red-600">${escapeHtml(err.message)}</div>`;
+      `<div class="pop-card p-4 text-sm" style="color: var(--morandi-rose);">${escapeHtml(err.message)}</div>`;
   }
 }
 
@@ -710,7 +831,6 @@ function renderStats(records) {
     new Set(records.map(r => r.className).filter(Boolean)).size;
   document.getElementById('statPhotos').textContent =
     records.filter(r => r.fileUrl || r.fileId).length;
-
   const classCounts = {};
   const issueCounts = {};
   records.forEach(r => {
@@ -721,15 +841,14 @@ function renderStats(records) {
       issueCounts[item] = (issueCounts[item] || 0) + 1;
     });
   });
-
   const classEntries = Object.entries(classCounts).sort((a,b) => b[1]-a[1]);
   const issueEntries = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
   document.getElementById('classStats').innerHTML = classEntries.length
-    ? classEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1"><span>${escapeHtml(k)}</span><b>${v} 筆</b></div>`).join('')
-    : '<p class="text-slate-400">沒有資料</p>';
+    ? classEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1.5" style="border-color: var(--morandi-border);"><span>${escapeHtml(k)}</span><b>${v} 筆</b></div>`).join('')
+    : '<p style="color: var(--morandi-muted);">沒有資料</p>';
   document.getElementById('issueStats').innerHTML = issueEntries.length
-    ? issueEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1 gap-3"><span>${escapeHtml(k)}</span><b>${v} 次</b></div>`).join('')
-    : '<p class="text-slate-400">沒有資料</p>';
+    ? issueEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1.5 gap-3" style="border-color: var(--morandi-border);"><span>${escapeHtml(k)}</span><b>${v} 次</b></div>`).join('')
+    : '<p style="color: var(--morandi-muted);">沒有資料</p>';
 }
 
 /* =====================================================
@@ -740,14 +859,12 @@ function renderRecords() {
   renderStats(records);
   const list = document.getElementById('recordList');
   if (!records.length) {
-    list.innerHTML = '<div class="bg-white rounded-xl p-5 text-center text-sm text-slate-500">查無符合條件的紀錄</div>';
+    list.innerHTML = '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">查無符合條件的紀錄</div>';
     return;
   }
-
   list.innerHTML = records.map((r,index) => {
     const area = (String(r.issue).match(/^\[(教室|廁所|外掃區)\]/) || [])[1] || '未分類';
     const issueText = String(r.issue || '').replace(/^\[(教室|廁所|外掃區)\]\s*/, '');
-
     /* 照片顯示 */
     let photo = '';
     if (r.fileUrl || r.thumbnailUrl) {
@@ -757,40 +874,38 @@ function renderRecords() {
             <a href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">
               <img class="record-photo" loading="lazy" src="${escapeHtml(r.thumbnailUrl)}" alt="評分照片"
                 onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-              <div class="text-xs text-red-500 mt-2" style="display:none;">照片縮圖載入失敗，請點擊下方連結查看原始照片。</div>
+              <div class="text-xs mt-2" style="color: var(--morandi-rose); display:none;">照片縮圖載入失敗，請點擊下方連結查看原始照片。</div>
             </a>
-            <a class="text-xs text-blue-700 underline mt-2 inline-block" href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">另開照片</a>
+            <a class="text-xs underline mt-2 inline-block" style="color: var(--morandi-primary-dark);" href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">另開照片</a>
           </div>`;
       } else {
         photo = `
-          <p class="text-xs text-red-500 mt-2">無法取得照片縮圖網址</p>
-          <a class="text-xs text-blue-700 underline" href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">另開照片</a>`;
+          <p class="text-xs mt-2" style="color: var(--morandi-rose);">無法取得照片縮圖網址</p>
+          <a class="text-xs underline" style="color: var(--morandi-primary-dark);" href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">另開照片</a>`;
       }
     } else {
-      photo = '<p class="text-xs text-slate-400 mt-2">無照片連結</p>';
+      photo = '<p class="text-xs mt-2" style="color: var(--morandi-muted);">無照片連結</p>';
     }
-
     /* 刪除按鈕 */
     const deleteButton = adminPassword ? `
-      <button type="button" class="deleteRecordBtn mt-3 text-sm bg-red-50 text-red-700 border border-red-200 rounded-lg px-3 py-2" data-index="${index}">
+      <button type="button" class="deleteRecordBtn mt-3 text-sm rounded-xl px-3 py-2 font-semibold" style="background: #F8E8E6; color: #B86B6B; border: 2px solid #E0B8B5;" data-index="${index}">
         刪除此筆紀錄及照片
       </button>` : '';
-
     /* 單筆紀錄 */
     return `
-      <article class="bg-white rounded-xl shadow-sm p-4">
+      <article class="pop-card p-4">
         <div class="flex items-start justify-between gap-2">
           <div>
             <div class="font-bold">
               ${escapeHtml(r.className || '未標示班級')}
-              <span class="text-xs font-medium px-2 py-1 rounded-full ${
-                area === '教室' ? 'bg-blue-50 text-blue-700' :
-                area === '廁所' ? 'bg-emerald-50 text-emerald-700' :
-                area === '外掃區' ? 'bg-amber-50 text-amber-700' :
-                'bg-slate-100 text-slate-600'
-              }">${area}</span>
+              <span class="text-xs font-semibold px-2 py-1 rounded-full ml-1" style="
+                ${area === '教室' ? 'background:#E0ECEC;color:#5E8283;' :
+                  area === '廁所' ? 'background:#E8EFE4;color:#6B8F6B;' :
+                  area === '外掃區' ? 'background:#F5EDE4;color:#B89B5E;' :
+                  'background:#EDE9E3;color:#8A837A;'}
+              ">${area}</span>
             </div>
-            <div class="text-xs text-slate-500 mt-1">${escapeHtml(r.timestamp || '未標示時間')}</div>
+            <div class="text-xs mt-1" style="color: var(--morandi-muted);">${escapeHtml(r.timestamp || '未標示時間')}</div>
           </div>
         </div>
         <p class="text-sm mt-3 whitespace-pre-wrap break-words">${escapeHtml(issueText || '未填寫缺失')}</p>
@@ -798,7 +913,6 @@ function renderRecords() {
         ${deleteButton}
       </article>`;
   }).join('');
-
   /* 綁定刪除事件 */
   list.querySelectorAll('.deleteRecordBtn').forEach(btn => {
     btn.addEventListener('click',() => {
@@ -856,7 +970,6 @@ async function deleteRecord(record) {
     alert('這筆資料沒有 rowNumber，無法安全刪除。請確認 GAS 查詢回傳欄位。');
     return;
   }
-
   const form = new URLSearchParams();
   form.set('action','delete');
   form.set('rowNumber',String(record.rowNumber));
@@ -866,7 +979,6 @@ async function deleteRecord(record) {
   form.set('issue',String(record.issue || ''));
   form.set('fileUrl',String(record.fileUrl || ''));
   form.set('password',adminPassword);
-
   try {
     /* no-cors POST 無法讀取 GAS 回應。送出後重新查詢確認是否刪除成功。 */
     await fetch(GAS_WEB_APP_URL,{
