@@ -1,1088 +1,523 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>華南高商校園整潔評分系統</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  :root {
-    --morandi-bg: #F2EDE6;
-    --morandi-card: #FBF8F3;
-    --morandi-primary: #7A9E9F;
-    --morandi-primary-dark: #5E8283;
-    --morandi-accent: #C9A9A6;
-    --morandi-sage: #A8B5A2;
-    --morandi-rose: #D4A5A5;
-    --morandi-cream: #E8DFD0;
-    --morandi-text: #4A4540;
-    --morandi-muted: #8A837A;
-    --morandi-border: #D6CFC4;
-    --morandi-shadow: rgba(90, 80, 70, 0.12);
-  }
 
-  body {
-    -webkit-tap-highlight-color: transparent;
-    background-color: var(--morandi-bg);
-    color: var(--morandi-text);
-    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
-  }
+/**
+ * 華南高商校園整潔評分系統
+ *
+ * 功能：
+ * 1. 照片上傳至 Google Drive
+ * 2. 紀錄寫入 Google 試算表
+ * 3. JSONP 查詢紀錄
+ * 4. 管理者密碼驗證
+ * 5. 管理者刪除紀錄及照片
+ *
+ * 必須設定的指令碼屬性：
+ * ADMIN_PASSWORD = 自訂管理者密碼
+ */
 
-  .hidden { display: none !important; }
+const FOLDER_NAME = "整潔資料測試";
+const SPREADSHEET_NAME = "整潔評分資料庫";
 
-  /* 普普風粗線條與圓角 */
-  .pop-card {
-    background: var(--morandi-card);
-    border: 3px solid var(--morandi-border);
-    border-radius: 20px;
-    box-shadow: 6px 6px 0 var(--morandi-shadow);
-  }
+const HEADERS = [
+  "時間",
+  "班級",
+  "缺失項目",
+  "相片連結"
+];
 
-  .pop-btn {
-    border: 3px solid var(--morandi-primary-dark);
-    border-radius: 16px;
-    box-shadow: 4px 4px 0 var(--morandi-shadow);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .pop-btn:active {
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 var(--morandi-shadow);
-  }
-
-  .pop-tab-active {
-    background: var(--morandi-primary);
-    color: white;
-    border: 3px solid var(--morandi-primary-dark);
-    box-shadow: 3px 3px 0 var(--morandi-shadow);
-  }
-  .pop-tab-inactive {
-    background: var(--morandi-card);
-    color: var(--morandi-muted);
-    border: 3px solid var(--morandi-border);
-  }
-
-  .record-photo {
-    display: block;
-    width: 100%;
-    max-width: 500px;
-    height: auto;
-    max-height: 360px;
-    object-fit: contain;
-    background: var(--morandi-cream);
-    border-radius: 14px;
-    border: 3px solid var(--morandi-border);
-  }
-
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    box-shadow: none !important;
-  }
-
-  /* 輕微波點背景（普普風元素，莫蘭迪色） */
-  .pop-dots {
-    background-image: radial-gradient(var(--morandi-border) 1.2px, transparent 1.2px);
-    background-size: 14px 14px;
-  }
-
-  select, input[type="text"], input[type="date"] {
-    border: 2px solid var(--morandi-border);
-    background: var(--morandi-card);
-    color: var(--morandi-text);
-  }
-  select:focus, input:focus {
-    outline: none;
-    border-color: var(--morandi-primary);
-  }
-
-  .issue-item {
-    background: var(--morandi-cream);
-    border: 2px solid var(--morandi-border);
-    border-radius: 12px;
-  }
-</style>
-</head>
-<body class="min-h-screen pb-12">
-<header class="sticky top-0 z-40" style="background: var(--morandi-primary); color: white; border-bottom: 4px solid var(--morandi-primary-dark);">
-  <div class="max-w-3xl mx-auto flex items-center justify-between py-4 px-4">
-    <button id="homeBtn" class="text-sm font-bold tracking-wide">🧹 校園整潔評分</button>
-    <span id="headerPageName" class="text-sm font-medium opacity-90">首頁</span>
-  </div>
-</header>
-
-<main class="max-w-3xl mx-auto p-4 space-y-5">
-<!-- 首頁 -->
-<section id="homePage" class="space-y-5">
-  <div class="pop-card p-7 text-center space-y-3 pop-dots">
-    <div class="text-5xl">🧹</div>
-    <h1 class="text-xl font-bold tracking-wide" style="color: var(--morandi-primary-dark);">華南高商校園整潔評分系統</h1>
-    <p class="text-sm" style="color: var(--morandi-muted);">請選擇要使用的功能</p>
-  </div>
-
-  <div id="lineBrowserNotice" class="hidden rounded-2xl p-4 space-y-2" style="background: #E8F0F5; border: 2px solid #B9CDD9; color: #405968;">
-    <div class="font-bold">📱 目前使用 LINE 內建瀏覽器</div>
-    <p id="lineBrowserAdvice" class="text-sm">若拍照或查看評分時發生異常，建議改用手機外部瀏覽器開啟。</p>
-    <a id="lineExternalBrowserLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-block rounded-xl px-4 py-2 text-sm font-bold" style="background: #5E8283; color: white; text-decoration: none;">嘗試改用外部瀏覽器開啟</a>
-    <p class="text-xs">若仍停留在 LINE，請點角落「⋯」，選擇「以其他瀏覽器開啟」。</p>
-  </div>
-
-  <button id="goRatingBtn" class="w-full pop-btn p-5 text-left" style="background: var(--morandi-primary); color: white;">
-    <div class="text-xl font-bold">📷 評分系統</div>
-    <div class="text-sm mt-1 opacity-90">選擇班級、巡查區域、拍照並上傳缺失紀錄</div>
-  </button>
-
-  <button id="goQueryBtn" class="w-full pop-btn p-5 text-left" style="background: var(--morandi-card); color: var(--morandi-text);">
-    <div class="text-xl font-bold">📊 查看評分</div>
-    <div class="text-sm mt-1" style="color: var(--morandi-muted);">查詢各班紀錄、查看照片及缺失統計</div>
-  </button>
-
-  <a href="https://drive.google.com/drive/folders/1GiYtNrAF6gWDMMAQ9gcdzrXpyUQCklsx" target="_blank" rel="noopener noreferrer" class="block w-full pop-btn p-5 text-left" style="background: var(--morandi-card); color: var(--morandi-text); text-decoration: none;">
-    <div class="text-xl font-bold">🏆 整潔競賽成績</div>
-    <div class="text-sm mt-1" style="color: var(--morandi-muted);">需登入學校帳號</div>
-  </a>
-</section>
-
-<!-- 評分系統 -->
-<section id="ratingPage" class="hidden space-y-5">
-  <button class="backHome text-sm font-bold" style="color: var(--morandi-primary-dark);">← 返回首頁</button>
-
-  <section class="pop-card p-5 space-y-4">
-    <h2 class="font-bold text-lg border-b-2 pb-2" style="color: var(--morandi-primary-dark); border-color: var(--morandi-border);">1. 評分基本資料</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label class="block text-sm font-semibold mb-1">年級</label>
-        <select id="ratingGrade" class="w-full rounded-xl p-3">
-          <option value="">請先選擇年級</option>
-          <option value="一">一年級</option>
-          <option value="二">二年級</option>
-          <option value="三">三年級</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">受評班級</label>
-        <select id="classSelect" class="w-full rounded-xl p-3" disabled>
-          <option value="">請先選擇年級</option>
-        </select>
-      </div>
-    </div>
-
-    <div>
-      <label class="block text-sm font-semibold mb-2">巡查區域</label>
-      <div class="grid grid-cols-3 gap-2">
-        <button type="button" id="classroomTab" class="py-3 rounded-xl font-bold pop-tab-active">🏫 教室</button>
-        <button type="button" id="toiletTab" class="py-3 rounded-xl font-bold pop-tab-inactive">🚻 廁所</button>
-        <button type="button" id="outdoorTab" class="py-3 rounded-xl font-bold pop-tab-inactive">🌳 外掃區</button>
-      </div>
-    </div>
-
-    <div>
-      <label class="block text-sm font-semibold mb-2">缺失項目（可複選）</label>
-      <div id="issueList" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2"></div>
-      <input type="text" id="otherIssueInput" placeholder="其他補充說明（選填）" class="w-full rounded-xl p-3 text-sm">
-    </div>
-  </section>
-
-  <section class="pop-card p-5 space-y-3">
-    <h2 class="font-bold text-lg border-b-2 pb-2" style="color: var(--morandi-primary-dark); border-color: var(--morandi-border);">2. 現場拍照蒐證</h2>
-    <div class="flex flex-col items-center justify-center rounded-2xl p-7 relative" style="border: 3px dashed var(--morandi-primary); background: var(--morandi-cream);">
-      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20">
-      <div class="text-center space-y-2 pointer-events-none">
-        <div class="text-5xl">📷</div>
-        <p class="font-bold" style="color: var(--morandi-primary-dark);">點擊此處開啟相機拍照</p>
-        <p class="text-xs" style="color: var(--morandi-muted);">拍照後會先顯示浮水印照片供確認</p>
-      </div>
-    </div>
-    <div id="lineCameraNotice" class="hidden rounded-xl p-3 text-xs" style="background: #E8F0F5; color: #405968; border: 1px solid #B9CDD9;">
-      LINE 內建瀏覽器不一定能直接呼叫相機。若點擊後只出現相簿，請從角落「⋯」選擇「以其他瀏覽器開啟」（iPhone 使用 Safari；Android 使用 Chrome）。
-    </div>
-  </section>
-
-  <!-- 上傳進度 -->
-  <section class="pop-card p-5 space-y-3">
-    <h3 class="font-bold">☁️ 雲端上傳進度</h3>
-    <div class="grid grid-cols-3 gap-2 text-center text-sm">
-      <div class="rounded-xl p-3" style="background: #E0ECEC; border: 2px solid var(--morandi-border);">
-        <div class="font-bold text-2xl" style="color: var(--morandi-primary);" id="queueCount">0</div>
-        <div style="color: var(--morandi-muted);">等待上傳</div>
-      </div>
-      <div class="rounded-xl p-3" style="background: #F5EDE4; border: 2px solid var(--morandi-border);">
-        <div class="font-bold text-2xl" style="color: #C4A35A;" id="uploadingCount">0</div>
-        <div style="color: var(--morandi-muted);">上傳中</div>
-      </div>
-      <div class="rounded-xl p-3" style="background: #E8EFE4; border: 2px solid var(--morandi-border);">
-        <div class="font-bold text-2xl" style="color: var(--morandi-sage);" id="successCount">0</div>
-        <div style="color: var(--morandi-muted);">已完成</div>
-      </div>
-    </div>
-    <p id="uploadStatus" class="text-xs" style="color: var(--morandi-muted);">目前沒有待上傳照片</p>
-    <p id="failedCount" class="text-xs" style="color: var(--morandi-rose);"></p>
-    <p class="text-xs" style="color: #B89B5E;">提醒：待上傳照片暫存在目前頁面，上傳完成前請勿關閉或重新整理網頁。</p>
-  </section>
-</section>
-
-<!-- 查看評分 -->
-<section id="queryPage" class="hidden space-y-5">
-  <div class="flex items-center justify-between">
-    <button class="backHome text-sm font-bold" style="color: var(--morandi-primary-dark);">← 返回首頁</button>
-    <button id="reloadBtn" class="text-sm font-semibold px-4 py-2 rounded-xl" style="background: #E0ECEC; color: var(--morandi-primary-dark); border: 2px solid var(--morandi-border);">↻ 重新整理</button>
-  </div>
-
-  <section class="pop-card p-5 space-y-3">
-    <h2 class="font-bold text-lg">📊 評分紀錄查詢</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div>
-        <label class="block text-sm font-semibold mb-1">年級</label>
-        <select id="queryGrade" class="w-full rounded-xl p-2.5">
-          <option value="">全部年級</option>
-          <option value="一">一年級</option>
-          <option value="二">二年級</option>
-          <option value="三">三年級</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">班級</label>
-        <select id="queryClass" class="w-full rounded-xl p-2.5">
-          <option value="">全部班級</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">巡查區域</label>
-        <select id="queryArea" class="w-full rounded-xl p-2.5">
-          <option value="">全部區域</option>
-          <option value="教室">教室</option>
-          <option value="廁所">廁所</option>
-          <option value="外掃區">外掃區</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">開始日期</label>
-        <input type="date" id="dateFrom" class="w-full rounded-xl p-2.5">
-      </div>
-      <div>
-        <label class="block text-sm font-semibold mb-1">結束日期</label>
-        <input type="date" id="dateTo" class="w-full rounded-xl p-2.5">
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-      <button id="applyFilterBtn" class="pop-btn py-2.5 font-bold text-white" style="background: var(--morandi-primary);">套用篩選</button>
-      <button id="clearFilterBtn" class="pop-btn py-2.5 font-bold" style="background: var(--morandi-cream); color: var(--morandi-text);">清除條件</button>
-    </div>
-    <p id="queryStatus" class="text-xs" style="color: var(--morandi-muted);">尚未載入資料</p>
-  </section>
-
-  <div id="queryResultsContainer" class="hidden space-y-5">
-  <!-- 統計 -->
-  <section class="pop-card p-5 space-y-3">
-    <h3 class="font-bold">📈 篩選結果統計</h3>
-    <div class="grid grid-cols-3 gap-2 text-center">
-      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
-        <div id="statRecords" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
-        <div class="text-xs" style="color: var(--morandi-muted);">紀錄筆數</div>
-      </div>
-      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
-        <div id="statClasses" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
-        <div class="text-xs" style="color: var(--morandi-muted);">涉及班級</div>
-      </div>
-      <div class="rounded-xl p-3" style="background: var(--morandi-cream); border: 2px solid var(--morandi-border);">
-        <div id="statPhotos" class="text-2xl font-bold" style="color: var(--morandi-primary);">0</div>
-        <div class="text-xs" style="color: var(--morandi-muted);">照片數量</div>
-      </div>
-    </div>
-    <div>
-      <h4 class="text-sm font-semibold mb-2">各班缺失紀錄數</h4>
-      <div id="classStats" class="space-y-1 text-sm"></div>
-    </div>
-    <div>
-      <h4 class="text-sm font-semibold mb-2">缺失項目分布</h4>
-      <div id="issueStats" class="space-y-1 text-sm"></div>
-    </div>
-  </section>
-
-  <!-- 紀錄明細 -->
-  <section class="space-y-3">
-    <div class="flex items-center justify-between">
-      <h3 class="font-bold">🗂️ 紀錄明細</h3>
-      <button id="adminLoginBtn" class="text-xs px-3 py-2 rounded-xl font-semibold" style="border: 2px solid var(--morandi-border); background: var(--morandi-card);">管理者登入</button>
-    </div>
-    <p id="adminStatus" class="text-xs" style="color: var(--morandi-muted);">一般查詢模式</p>
-    <div id="recordList" class="space-y-3">
-      <div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請先載入資料</div>
-    </div>
-  </section>
-  </div>
-</section>
-</main>
-
-<!-- 拍照確認視窗 -->
-<div id="previewModal" class="hidden fixed inset-0 z-[100] p-3 flex items-center justify-center" style="background: rgba(74, 69, 64, 0.75);">
-  <div class="w-full max-w-lg max-h-[95vh] overflow-y-auto p-5 space-y-4" style="background: var(--morandi-card); border: 4px solid var(--morandi-primary); border-radius: 24px; box-shadow: 8px 8px 0 var(--morandi-shadow);">
-    <div class="flex items-center justify-between">
-      <h2 class="font-bold text-lg" style="color: var(--morandi-primary-dark);">📷 確認照片與浮水印</h2>
-      <span class="text-xs" style="color: var(--morandi-muted);">確認內容正確</span>
-    </div>
-    <canvas id="previewCanvas" class="w-full max-h-[58vh] object-contain rounded-xl" style="background: var(--morandi-cream); border: 3px solid var(--morandi-border);"></canvas>
-    <div class="grid grid-cols-2 gap-3">
-      <button id="retakeBtn" class="py-3 rounded-xl font-bold pop-btn" style="background: var(--morandi-cream);">↩ 重新拍攝</button>
-      <button id="submitBtn" disabled class="py-3 rounded-xl font-bold pop-btn text-white" style="background: var(--morandi-primary);">✓ 確認並上傳</button>
-    </div>
-    <p class="text-xs text-center" style="color: var(--morandi-muted);">確認後會立即加入背景上傳，並保留目前班級及巡查區域。</p>
-  </div>
-</div>
-
-<script>
-'use strict';
-/* =====================================================
-   GAS 第 5 版部署網址
-===================================================== */
-const GAS_WEB_APP_URL =
-"https://script.google.com/macros/s/AKfycbwIawYhq3X8W0ps-uurZhwe3JYxSq1GWN54SJnjWsdT6mxvp6MVPZgrz-s1mjJ6Yu9Txw/exec";
 
 /* =====================================================
-   頁面切換
+   網頁 GET：提供 JSONP 查詢紀錄
 ===================================================== */
-const pageIds = ['homePage','ratingPage','queryPage'];
-function showPage(page) {
-  pageIds.forEach(id => {
-    document.getElementById(id).classList.toggle('hidden',id !== page);
-  });
-  document.getElementById('headerPageName').textContent =
-    page === 'ratingPage' ? '評分系統' :
-    page === 'queryPage' ? '查看評分' : '首頁';
-  window.scrollTo(0,0);
-  if (page === 'queryPage' && !recordsLoaded) loadRecords();
-}
-document.getElementById('goRatingBtn').onclick = () => showPage('ratingPage');
-document.getElementById('goQueryBtn').onclick = () => showPage('queryPage');
-document.getElementById('homeBtn').onclick = () => showPage('homePage');
-document.querySelectorAll('.backHome').forEach(btn => {
-  btn.onclick = () => showPage('homePage');
-});
 
-/* =====================================================
-   LINE 內建瀏覽器相容性提示
-===================================================== */
-(function setupLineBrowserGuidance() {
-  const ua = navigator.userAgent || '';
-  const isLineBrowser = /Line\//i.test(ua) || /;\s*wv\)/i.test(ua) && /LINE/i.test(ua);
-  if (!isLineBrowser) return;
-
-  document.getElementById('lineBrowserNotice').classList.remove('hidden');
-  document.getElementById('lineCameraNotice').classList.remove('hidden');
-
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  document.getElementById('lineBrowserAdvice').textContent = isIOS
-    ? '若拍照或查看評分時發生異常，建議改用 Safari 開啟。'
-    : '若拍照或查看評分時發生異常，建議改用 Chrome 開啟。';
-
+function doGet(e) {
   try {
-    const externalUrl = new URL(window.location.href);
-    externalUrl.searchParams.set('openExternalBrowser', '1');
-    document.getElementById('lineExternalBrowserLink').href = externalUrl.toString();
-  } catch (err) {
-    document.getElementById('lineExternalBrowserLink').classList.add('hidden');
-  }
-})();
+    const action = e && e.parameter
+      ? e.parameter.action
+      : "";
 
-/* =====================================================
-   評分系統
-===================================================== */
-const cameraInput = document.getElementById('cameraInput');
-const previewCanvas = document.getElementById('previewCanvas');
-const previewModal = document.getElementById('previewModal');
-const submitBtn = document.getElementById('submitBtn');
+    if (action === "list") {
+      const records = getRecords_();
 
-const CLASS_GROUPS = {
-  '一': ['商一1','國一1','航一1','電一1','資一1','廣一1','美一1','英一1','日一1','觀一1','高一1','高一2','高一3','高一4'],
-  '二': ['商二1','觀二1','國二1','國二2','電二1','資二1','廣二1','美二1','英二1','英二2','高二1','高二2','高二3','高二4'],
-  '三': ['商三1','觀三1','國三1','國三2','電三1','資三1','廣三1','美三1','英三1','英三2','高三1','高三2','高三3','高三4']
-};
+      const result = {
+        result: "success",
+        records: records
+      };
 
-function populateClassOptions(selectElement, grade, placeholder) {
-  const previousValue = selectElement.value;
-  selectElement.innerHTML = '';
-  const firstOption = document.createElement('option');
-  firstOption.value = '';
-  firstOption.textContent = placeholder;
-  selectElement.appendChild(firstOption);
-  const classNames = grade ? (CLASS_GROUPS[grade] || []) : Object.values(CLASS_GROUPS).flat();
-  classNames.forEach(name => {
-    const option = document.createElement('option');
-    option.value = name;
-    option.textContent = name;
-    selectElement.appendChild(option);
-  });
-  if (classNames.includes(previousValue)) selectElement.value = previousValue;
-}
+      const callback = e.parameter.callback;
 
-const classSelect = document.getElementById('classSelect');
-const issueList = document.getElementById('issueList');
-const otherIssueInput = document.getElementById('otherIssueInput');
-const ratingGrade = document.getElementById('ratingGrade');
-const queryGrade = document.getElementById('queryGrade');
+      // HTML 使用 JSONP，因此回傳 JavaScript 格式
+      if (callback) {
+        if (!/^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(callback)) {
+          throw new Error("無效的 JSONP callback");
+        }
 
-populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
+        return ContentService
+          .createTextOutput(
+            callback + "(" + JSON.stringify(result) + ");"
+          )
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
 
-ratingGrade.addEventListener('change', () => {
-  populateClassOptions(classSelect, ratingGrade.value, ratingGrade.value ? '請選擇班級' : '請先選擇年級');
-  classSelect.disabled = !ratingGrade.value;
-  checkFormReady();
-  if (loadedImage) drawWatermarkedImage();
-});
-queryGrade.addEventListener('change', () => {
-  populateClassOptions(document.getElementById('queryClass'), queryGrade.value, '全部班級');
-  renderRecords();
-});
+      return jsonResponse_(result);
+    }
 
-const classroomTab = document.getElementById('classroomTab');
-const toiletTab = document.getElementById('toiletTab');
-const outdoorTab = document.getElementById('outdoorTab');
-
-const issueOptions = {
-  classroom: [
-    ['垃圾、回收超過1/2桶未倒','🗑️ 垃圾、回收超過1/2桶未倒'],
-    ['地面髒亂','🥤 地面髒亂'],
-    ['玻璃窗台未擦','🪟 玻璃窗台未擦'],
-    ['黑板未擦','⬛ 黑板未擦'],
-    ['桌椅未整齊','🪑 桌椅未整齊'],
-    ['櫃子雜物','🗄️ 櫃子雜物'],
-    ['洗手臺髒亂','🚰 洗手臺髒亂'],
-    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
-  ],
-  toilet: [
-    ['地面髒亂','🥤 地面髒亂'],
-    ['洗手臺、鏡子未擦','🚰 洗手臺、鏡子未擦'],
-    ['馬桶小便斗未刷','🚽 馬桶小便斗未刷'],
-    ['垃圾未倒','🗑️ 垃圾未倒'],
-    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
-  ],
-  outdoor: [
-    ['垃圾、回收超過1/2桶未倒','🗑️ 垃圾、回收超過1/2桶未倒'],
-    ['人工垃圾未清','🥤 人工垃圾未清'],
-    ['落葉/蜘蛛絲未清','🍂 落葉/蜘蛛絲未清'],
-    ['走廊窗台窗戶未擦','🪟 走廊窗台窗戶未擦'],
-    ['飲水機髒亂','🚰 飲水機髒亂'],
-    ['掃具凌亂、水桶未倒放','🪣 掃具凌亂、水桶未倒放']
-  ]
-};
-
-let currentArea = 'classroom';
-let loadedImage = null;
-let uploadQueue = [];
-let isUploading = false;
-let totalSuccess = 0;
-let totalFailed = 0;
-
-/* 缺失選項 */
-function renderIssueOptions() {
-  issueList.innerHTML = '';
-  issueOptions[currentArea].forEach(([value,label]) => {
-    const wrapper = document.createElement('label');
-    wrapper.className = 'issue-item flex items-center gap-2 text-sm p-3';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.name = 'issue';
-    checkbox.value = value;
-    checkbox.className = 'w-4 h-4 shrink-0';
-    checkbox.addEventListener('change',() => {
-      checkFormReady();
-      if (loadedImage) drawWatermarkedImage();
+    return jsonResponse_({
+      result: "success",
+      message: "校園整潔評分系統 GAS 正常運作"
     });
-    const span = document.createElement('span');
-    span.textContent = label;
-    wrapper.append(checkbox,span);
-    issueList.appendChild(wrapper);
-  });
-  checkFormReady();
-}
 
-/* 區域切換 */
-function setArea(area) {
-  currentArea = area;
-  classroomTab.className = area === 'classroom' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
-  toiletTab.className = area === 'toilet' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
-  outdoorTab.className = area === 'outdoor' ? 'py-3 rounded-xl font-bold pop-tab-active' : 'py-3 rounded-xl font-bold pop-tab-inactive';
-  renderIssueOptions();
-  if (loadedImage) drawWatermarkedImage();
-}
-classroomTab.onclick = () => setArea('classroom');
-toiletTab.onclick = () => setArea('toilet');
-outdoorTab.onclick = () => setArea('outdoor');
-
-/* 取得缺失項目 */
-function getSelectedIssues() {
-  const selected = Array.from(document.querySelectorAll('input[name="issue"]:checked'))
-    .map(cb => cb.value);
-  if (otherIssueInput.value.trim()) selected.push(otherIssueInput.value.trim());
-  return selected.join('、');
-}
-
-/* 表單檢查 */
-function checkFormReady() {
-  const hasIssue =
-    document.querySelectorAll('input[name="issue"]:checked').length > 0 ||
-    otherIssueInput.value.trim() !== '';
-  submitBtn.disabled = !(classSelect.value && hasIssue && loadedImage);
-}
-classSelect.addEventListener('change',() => {
-  checkFormReady();
-  if (loadedImage) drawWatermarkedImage();
-});
-otherIssueInput.addEventListener('input',() => {
-  checkFormReady();
-  if (loadedImage) drawWatermarkedImage();
-});
-
-/* 拍照前檢查班級：未選班級不得開啟相機 */
-cameraInput.addEventListener('click',function(e) {
-  if (!classSelect.value) {
-    e.preventDefault();
-    cameraInput.value = '';
-    alert('尚未選擇班級，請先選擇班級後再拍照。');
-  }
-});
-
-/* 拍照讀取 */
-cameraInput.addEventListener('change',function(e) {
-  if (!classSelect.value) {
-    cameraInput.value = '';
-    alert('尚未選擇班級，無法生成浮水印照片或上傳。');
-    return;
-  }
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(event) {
-    const img = new Image();
-    img.onload = function() {
-      loadedImage = img;
-      drawWatermarkedImage();
-      previewModal.classList.remove('hidden');
-      checkFormReady();
-    };
-    img.onerror = () => alert('圖片載入失敗，請重新拍攝。');
-    img.src = event.target.result;
-  };
-  reader.onerror = () => alert('讀取照片失敗。');
-  reader.readAsDataURL(file);
-});
-
-/* 清除目前照片 */
-function clearCurrentPhoto() {
-  cameraInput.value = '';
-  loadedImage = null;
-  previewModal.classList.add('hidden');
-  previewCanvas.width = 0;
-  previewCanvas.height = 0;
-  checkFormReady();
-}
-document.getElementById('retakeBtn').onclick = clearCurrentPhoto;
-
-/* =====================================================
-   浮水印
-===================================================== */
-function drawWatermarkedImage() {
-  if (!loadedImage) return;
-  const ctx = previewCanvas.getContext('2d');
-  const targetWidth = Math.min(1600,loadedImage.width);
-  const scale = targetWidth / loadedImage.width;
-  previewCanvas.width = targetWidth;
-  previewCanvas.height = Math.round(loadedImage.height * scale);
-  ctx.drawImage(loadedImage,0,0,previewCanvas.width,previewCanvas.height);
-  const className = '班級：' + (classSelect.value || '未選');
-  const areaName =
-    currentArea === 'classroom' ? '教室' :
-    currentArea === 'toilet' ? '廁所' : '外掃區';
-  const issueText = '區域：' + areaName + '　缺失：' + (getSelectedIssues() || '未填');
-  const now = new Date();
-  const timeStr = '時間：' +
-    now.getFullYear() + '/' +
-    String(now.getMonth()+1).padStart(2,'0') + '/' +
-    String(now.getDate()).padStart(2,'0') + ' ' +
-    String(now.getHours()).padStart(2,'0') + ':' +
-    String(now.getMinutes()).padStart(2,'0');
-  /* 放大班級文字後，同步增加底部浮水印區高度 */
-  const barHeight = Math.max(180,Math.round(previewCanvas.width * .15));
-  ctx.fillStyle = 'rgba(0,0,0,.72)';
-  ctx.fillRect(0,previewCanvas.height-barHeight,previewCanvas.width,barHeight);
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'left';
-  /* 僅班級文字放大兩倍；缺失原因與時間字體維持原設定 */
-  ctx.font = `bold ${Math.max(52,Math.round(previewCanvas.width*.064))}px sans-serif`;
-  ctx.fillText(className,24,previewCanvas.height-barHeight+42);
-  ctx.font = `${Math.max(22,Math.round(previewCanvas.width*.026))}px sans-serif`;
-  const maxWidth = previewCanvas.width-48;
-  let line = issueText;
-  while (ctx.measureText(line).width > maxWidth && line.length > 8) {
-    line = line.slice(0,-2)+'…';
-  }
-  ctx.fillText(line,24,previewCanvas.height-24);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#e2e8f0';
-  ctx.font = `${Math.max(18,Math.round(previewCanvas.width*.019))}px sans-serif`;
-  ctx.fillText(timeStr,previewCanvas.width-24,previewCanvas.height-barHeight+42);
-  ctx.textAlign = 'left';
-}
-
-/* =====================================================
-   背景排隊上傳
-===================================================== */
-function updateUploadStatus() {
-  document.getElementById('queueCount').textContent = uploadQueue.length;
-  document.getElementById('uploadingCount').textContent = isUploading ? 1 : 0;
-  document.getElementById('successCount').textContent = totalSuccess;
-  document.getElementById('failedCount').textContent = totalFailed
-    ? `⚠️ 失敗 ${totalFailed} 張，請檢查網路或雲端紀錄` : '';
-  const status = document.getElementById('uploadStatus');
-  if (isUploading && uploadQueue.length) {
-    status.textContent = `正在上傳照片，另有 ${uploadQueue.length} 張等待中`;
-  } else if (isUploading) {
-    status.textContent = '正在上傳最後一張照片...';
-  } else if (uploadQueue.length) {
-    status.textContent = `尚有 ${uploadQueue.length} 張照片等待上傳`;
-  } else {
-    status.textContent = '目前沒有待上傳照片';
-  }
-}
-
-/* 依序上傳 */
-async function processUploadQueue() {
-  if (isUploading) return;
-  isUploading = true;
-  updateUploadStatus();
-  while (uploadQueue.length > 0) {
-    const payload = uploadQueue.shift();
-    updateUploadStatus();
-    try {
-      const response = await fetch(GAS_WEB_APP_URL,{method:'POST',body:JSON.stringify(payload)});
-      if (!response.ok) throw new Error('HTTP '+response.status);
-      const result = await response.json();
-      if (result && result.result === 'success') {
-        totalSuccess++;
-      } else {
-        totalFailed++;
-        console.error('雲端回報上傳失敗：',result.error);
-      }
-    } catch(err) {
-      totalFailed++;
-      console.error('照片上傳錯誤：',err);
-    }
-    updateUploadStatus();
-  }
-  isUploading = false;
-  updateUploadStatus();
-}
-
-/* 確認照片並加入佇列 */
-submitBtn.addEventListener('click',function() {
-  if (!classSelect.value) {
-    alert('尚未選擇班級，不能上傳照片。');
-    checkFormReady();
-    return;
-  }
-  if (!loadedImage || submitBtn.disabled) return;
-  submitBtn.disabled = true;
-  try {
-    drawWatermarkedImage();
-    const imageData = previewCanvas.toDataURL('image/jpeg',.85);
-    const className = classSelect.value;
-    /* 區域前綴供查詢頁篩選 */
-    const areaPrefix =
-      currentArea === 'classroom' ? '教室' :
-      currentArea === 'toilet' ? '廁所' : '外掃區';
-    const issue = `[${areaPrefix}] ${getSelectedIssues()}`;
-    const timestamp = new Date().toLocaleString('zh-TW',{hour12:false});
-    const fileName = `整潔評分_${className}_${Date.now()}.jpg`;
-    uploadQueue.push({className,issue,timestamp,fileName,imageData});
-    updateUploadStatus();
-    /* 保留班級及區域，清空本張缺失 */
-    document.querySelectorAll('input[name="issue"]').forEach(cb => cb.checked = false);
-    otherIssueInput.value = '';
-    clearCurrentPhoto();
-    processUploadQueue();
-  } catch(err) {
-    alert('照片處理失敗：'+err.message);
-    checkFormReady();
-  }
-});
-
-renderIssueOptions();
-updateUploadStatus();
-
-/* =====================================================
-   查看評分：查詢 GAS
-===================================================== */
-let allRecords = [];
-let recordsLoaded = false;
-let adminPassword = '';
-let filterApplied = false;
-
-/* JSONP 查詢：區分載入失敗與逾時，並自動重試一次 */
-function jsonpRequestOnce(url,timeoutMs=20000) {
-  return new Promise((resolve,reject) => {
-    const callbackName = 'gasJsonp_' + Date.now() + '_' + Math.floor(Math.random()*100000);
-    const script = document.createElement('script');
-    let finished = false;
-    const timer = setTimeout(() => {
-      const err = new Error('GAS_TIMEOUT');
-      err.code = 'GAS_TIMEOUT';
-      finish(err);
-    },timeoutMs);
-    function finish(err,data) {
-      if (finished) return;
-      finished = true;
-      clearTimeout(timer);
-      try { delete window[callbackName]; }
-      catch(e) { window[callbackName] = undefined; }
-      script.remove();
-      if (err) reject(err);
-      else resolve(data);
-    }
-    window[callbackName] = data => finish(null,data);
-    script.onerror = () => {
-      const err = new Error('GAS_LOAD_ERROR');
-      err.code = 'GAS_LOAD_ERROR';
-      finish(err);
-    };
-    script.src = url + (url.includes('?') ? '&' : '?') +
-      'action=list&callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
-    document.body.appendChild(script);
-  });
-}
-
-async function jsonpRequest(url,timeoutMs=20000,onRetry=()=>{}) {
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      return await jsonpRequestOnce(url,timeoutMs);
-    } catch (err) {
-      lastError = err;
-      if (attempt === 0) {
-        onRetry();
-        await new Promise(resolve => setTimeout(resolve,800));
-      }
-    }
-  }
-  if (lastError && lastError.code === 'GAS_TIMEOUT') {
-    throw new Error('GAS 回應逾時，連續等待兩次仍未收到資料。請檢查網路後重試；若從 LINE 開啟，建議改用 Safari／Chrome。');
-  }
-  throw new Error('瀏覽器無法載入 GAS，可能是 LINE 內建瀏覽器或目前網路限制。請改用 Safari／Chrome，或稍後重試。');
-}
-
-/* =====================================================
-   Google Drive 照片網址處理
-===================================================== */
-function extractDriveId(url) {
-  const s = String(url || '');
-  if (!s) return '';
-  const pathMatch = s.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if (pathMatch) return pathMatch[1];
-  try {
-    const u = new URL(s);
-    const id = u.searchParams.get('id');
-    if (id) return id;
   } catch (err) {
-    // 網址格式不標準時，繼續使用正規表示式
+    const result = {
+      result: "error",
+      error: err.message
+    };
+
+    const callback = e && e.parameter
+      ? e.parameter.callback
+      : "";
+
+    if (callback && /^[a-zA-Z_$][0-9a-zA-Z_$]*$/.test(callback)) {
+      return ContentService
+        .createTextOutput(
+          callback + "(" + JSON.stringify(result) + ");"
+        )
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
+    return jsonResponse_(result);
   }
-  const queryMatch = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  return queryMatch ? queryMatch[1] : '';
 }
 
-/* 產生 Google Drive 縮圖網址 */
-function getThumbnailUrl(fileId) {
-  if (!fileId) return '';
-  return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(fileId) + '&sz=w800';
-}
 
 /* =====================================================
-   資料格式整理
+   網頁 POST：照片上傳、登入驗證、刪除紀錄
 ===================================================== */
-function normalizeRecord(raw) {
-  const fileUrl = raw.fileUrl ?? raw.photoUrl ?? raw.imageUrl ?? raw.photoLink ?? raw.url ?? '';
-  const fileId = raw.fileId ?? raw.photoId ?? extractDriveId(fileUrl) ?? '';
-  const thumbnailUrl = raw.thumbnailUrl || getThumbnailUrl(fileId);
-  return {
-    rowNumber: raw.rowNumber ?? raw.row ?? raw.rowIndex ?? '',
-    timestamp: raw.timestamp ?? raw.time ?? raw.date ?? '',
-    className: raw.className ?? raw.class ?? raw.classroom ?? '',
-    issue: raw.issue ?? raw.issues ?? '',
-    fileUrl: fileUrl,
-    fileId: fileId,
-    thumbnailUrl: thumbnailUrl
-  };
-}
 
-/* =====================================================
-   載入資料
-===================================================== */
-let recordsLoadingPromise = null;
-function loadRecords() {
-  if (recordsLoadingPromise) return recordsLoadingPromise;
+function doPost(e) {
+  try {
+    const data = getPostData_(e);
+    const action = String(data.action || "");
 
-  recordsLoadingPromise = (async () => {
-    const status = document.getElementById('queryStatus');
-    status.textContent = '資料載入中…';
-    document.getElementById('recordList').innerHTML =
-      '<div class="pop-card p-5 text-center">資料載入中…</div>';
-    try {
-      const data = await jsonpRequest(GAS_WEB_APP_URL,20000,() => {
-        status.textContent = '第一次連線未成功，正在自動重試…';
+    // 1. 管理者登入驗證
+    if (action === "login") {
+      const auth = verifyAdminPassword_(
+        data.password || data.adminPassword || ""
+      );
+
+      return jsonResponse_({
+        result: auth.ok ? "success" : "error",
+        authenticated: auth.ok,
+        message: auth.message
       });
-      if (!data || data.result === 'error') {
-        throw new Error((data && data.error) || 'GAS 回傳資料格式不正確');
-      }
-      const source =
-        Array.isArray(data.records) ? data.records :
-        Array.isArray(data.data) ? data.data :
-        Array.isArray(data.items) ? data.items :
-        Array.isArray(data.rows) ? data.rows : null;
-      if (!source) {
-        throw new Error('GAS 已回應，但資料格式不正確：找不到 records/data/items/rows 陣列。');
-      }
-      allRecords = source.map(normalizeRecord);
-      recordsLoaded = true;
-      status.textContent = `載入完成，共 ${allRecords.length} 筆紀錄`;
-      if (filterApplied) renderRecords();
-      else document.getElementById('recordList').innerHTML =
-        '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請設定查詢條件後，按「套用篩選」查看結果</div>';
-    } catch(err) {
-      recordsLoaded = false;
-      status.textContent = '載入失敗：' + err.message;
-      document.getElementById('recordList').innerHTML =
-        `<div class="pop-card p-4 text-sm" style="color: var(--morandi-rose);">${escapeHtml(err.message)}</div>`;
     }
-  })().finally(() => {
-    recordsLoadingPromise = null;
-  });
 
-  return recordsLoadingPromise;
-}
+    // 2. 管理者刪除紀錄
+    if (action === "delete") {
+      deleteRecord_(data);
 
-/* =====================================================
-   日期解析
-===================================================== */
-function parseRecordDate(value) {
-  const s = String(value || '').trim();
-  if (!s) return null;
-  let d = new Date(s);
-  if (!Number.isNaN(d.getTime())) return d;
-  // 支援 yyyy-MM-dd HH:mm:ss
-  const m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
-  if (m) {
-    return new Date(+m[1],+m[2]-1,+m[3],+(m[4] || 0),+(m[5] || 0),+(m[6] || 0));
-  }
-  return null;
-}
-
-/* =====================================================
-   篩選資料
-===================================================== */
-function getFilteredRecords() {
-  const cls = document.getElementById('queryClass').value;
-  const grade = document.getElementById('queryGrade').value;
-  const area = document.getElementById('queryArea').value;
-  const from = document.getElementById('dateFrom').value;
-  const to = document.getElementById('dateTo').value;
-  return allRecords.filter(r => {
-    if (cls && r.className !== cls) return false;
-    if (grade && !String(r.className || '').includes(grade)) return false;
-    if (area && !String(r.issue).startsWith('[' + area + ']')) return false;
-    const d = parseRecordDate(r.timestamp);
-    if (from && (!d || d < new Date(from + 'T00:00:00'))) return false;
-    if (to && (!d || d > new Date(to + 'T23:59:59'))) return false;
-    return true;
-  }).sort((a,b) => {
-    return (parseRecordDate(b.timestamp)?.getTime() || 0) -
-      (parseRecordDate(a.timestamp)?.getTime() || 0);
-  });
-}
-
-/* =====================================================
-   HTML 安全處理
-===================================================== */
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g,ch => ({
-    '&': '&amp;','<': '&lt;','>': '&gt;','"': '&quot;',"'": '&#39;'
-  }[ch]));
-}
-
-/* =====================================================
-   統計資料
-===================================================== */
-function renderStats(records) {
-  document.getElementById('statRecords').textContent = records.length;
-  document.getElementById('statClasses').textContent =
-    new Set(records.map(r => r.className).filter(Boolean)).size;
-  document.getElementById('statPhotos').textContent =
-    records.filter(r => r.fileUrl || r.fileId).length;
-  const classCounts = {};
-  const issueCounts = {};
-  records.forEach(r => {
-    const className = r.className || '未標示班級';
-    classCounts[className] = (classCounts[className] || 0) + 1;
-    let text = String(r.issue || '').replace(/^\[(教室|廁所|外掃區)\]\s*/, '');
-    text.split(/[、,，\n]/).map(x => x.trim()).filter(Boolean).forEach(item => {
-      issueCounts[item] = (issueCounts[item] || 0) + 1;
-    });
-  });
-  const classEntries = Object.entries(classCounts).sort((a,b) => b[1]-a[1]);
-  const issueEntries = Object.entries(issueCounts).sort((a,b) => b[1]-a[1]);
-  document.getElementById('classStats').innerHTML = classEntries.length
-    ? classEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1.5" style="border-color: var(--morandi-border);"><span>${escapeHtml(k)}</span><b>${v} 筆</b></div>`).join('')
-    : '<p style="color: var(--morandi-muted);">沒有資料</p>';
-  document.getElementById('issueStats').innerHTML = issueEntries.length
-    ? issueEntries.map(([k,v]) => `<div class="flex justify-between border-b py-1.5 gap-3" style="border-color: var(--morandi-border);"><span>${escapeHtml(k)}</span><b>${v} 次</b></div>`).join('')
-    : '<p style="color: var(--morandi-muted);">沒有資料</p>';
-}
-
-/* =====================================================
-   紀錄列表及照片縮圖
-===================================================== */
-function renderRecords() {
-  if (!filterApplied) return;
-  const records = getFilteredRecords();
-  renderStats(records);
-  const list = document.getElementById('recordList');
-  if (!records.length) {
-    list.innerHTML = '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">查無符合條件的紀錄</div>';
-    return;
-  }
-  list.innerHTML = records.map((r,index) => {
-    const area = (String(r.issue).match(/^\[(教室|廁所|外掃區)\]/) || [])[1] || '未分類';
-    const issueText = String(r.issue || '').replace(/^\[(教室|廁所|外掃區)\]\s*/, '');
-    /* 照片顯示 */
-    let photo = '';
-    if (r.fileUrl || r.thumbnailUrl) {
-      if (r.thumbnailUrl) {
-        photo = `
-          <div class="mt-3">
-            <a href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">
-              <img class="record-photo" loading="lazy" src="${escapeHtml(r.thumbnailUrl)}" alt="評分照片"
-                onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
-              <div class="text-xs mt-2" style="color: var(--morandi-rose); display:none;">照片縮圖載入失敗，請點擊下方連結查看原始照片。</div>
-            </a>
-            <a class="text-xs underline mt-2 inline-block" style="color: var(--morandi-primary-dark);" href="${escapeHtml(r.fileUrl || r.thumbnailUrl)}" target="_blank" rel="noopener">另開照片</a>
-          </div>`;
-      } else {
-        photo = `
-          <p class="text-xs mt-2" style="color: var(--morandi-rose);">無法取得照片縮圖網址</p>
-          <a class="text-xs underline" style="color: var(--morandi-primary-dark);" href="${escapeHtml(r.fileUrl)}" target="_blank" rel="noopener">另開照片</a>`;
-      }
-    } else {
-      photo = '<p class="text-xs mt-2" style="color: var(--morandi-muted);">無照片連結</p>';
+      return jsonResponse_({
+        result: "success",
+        message: "紀錄刪除成功"
+      });
     }
-    /* 刪除按鈕 */
-    const deleteButton = adminPassword ? `
-      <button type="button" class="deleteRecordBtn mt-3 text-sm rounded-xl px-3 py-2 font-semibold" style="background: #F8E8E6; color: #B86B6B; border: 2px solid #E0B8B5;" data-index="${index}">
-        刪除此筆紀錄及照片
-      </button>` : '';
-    /* 單筆紀錄 */
-    return `
-      <article class="pop-card p-4">
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <div class="font-bold">
-              ${escapeHtml(r.className || '未標示班級')}
-              <span class="text-xs font-semibold px-2 py-1 rounded-full ml-1" style="
-                ${area === '教室' ? 'background:#E0ECEC;color:#5E8283;' :
-                  area === '廁所' ? 'background:#E8EFE4;color:#6B8F6B;' :
-                  area === '外掃區' ? 'background:#F5EDE4;color:#B89B5E;' :
-                  'background:#EDE9E3;color:#8A837A;'}
-              ">${area}</span>
-            </div>
-            <div class="text-xs mt-1" style="color: var(--morandi-muted);">${escapeHtml(r.timestamp || '未標示時間')}</div>
-          </div>
-        </div>
-        <p class="text-sm mt-3 whitespace-pre-wrap break-words">${escapeHtml(issueText || '未填寫缺失')}</p>
-        ${photo}
-        ${deleteButton}
-      </article>`;
-  }).join('');
-  /* 綁定刪除事件 */
-  list.querySelectorAll('.deleteRecordBtn').forEach(btn => {
-    btn.addEventListener('click',() => {
-      const record = records[Number(btn.dataset.index)];
-      deleteRecord(record);
+
+    // 3. 一般照片上傳
+    if (data.imageData) {
+      uploadRecord_(data);
+
+      return jsonResponse_({
+        result: "success",
+        message: "照片及紀錄上傳成功"
+      });
+    }
+
+    throw new Error("無法辨識的操作或缺少照片資料");
+
+  } catch (err) {
+    return jsonResponse_({
+      result: "error",
+      error: err.message
     });
-  });
+  }
 }
 
-/* =====================================================
-   篩選按鈕
-===================================================== */
-document.getElementById('applyFilterBtn').onclick = () => {
-  filterApplied = true;
-  document.getElementById('queryResultsContainer').classList.remove('hidden');
-  if (recordsLoaded) renderRecords();
-  else loadRecords();
-};
-document.getElementById('clearFilterBtn').onclick = () => {
-  ['queryClass','queryGrade','queryArea','dateFrom','dateTo'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
-  populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
-  filterApplied = false;
-  document.getElementById('queryResultsContainer').classList.add('hidden');
-  document.getElementById('recordList').innerHTML =
-    '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請設定查詢條件後，按「套用篩選」查看結果</div>';
-};
-document.getElementById('reloadBtn').onclick = loadRecords;
 
 /* =====================================================
-   管理者登入及刪除
+   解析 POST 資料
 ===================================================== */
-document.getElementById('adminLoginBtn').onclick = () => {
-  if (adminPassword) {
-    adminPassword = '';
-    document.getElementById('adminLoginBtn').textContent = '管理者登入';
-    document.getElementById('adminStatus').textContent = '一般查詢模式';
-    renderRecords();
-    return;
-  }
-  const password = prompt('請輸入管理者密碼：');
-  if (password === null || !password.trim()) return;
-  adminPassword = password.trim();
-  document.getElementById('adminLoginBtn').textContent = '管理者登出';
-  document.getElementById('adminStatus').textContent = '管理者模式：可刪除紀錄';
-  renderRecords();
-};
 
-/* =====================================================
-   刪除紀錄
-===================================================== */
-async function deleteRecord(record) {
-  if (!adminPassword) {
-    alert('請先登入管理者。');
-    return;
+function getPostData_(e) {
+  if (!e) {
+    throw new Error("沒有收到 POST 資料");
   }
-  if (!confirm(`確定刪除這筆紀錄？\n\n${record.className}\n${record.timestamp}\n${record.issue}`)) return;
-  if (!record.rowNumber) {
-    alert('這筆資料沒有 rowNumber，無法安全刪除。請確認 GAS 查詢回傳欄位。');
-    return;
+
+  // 支援 application/json 或 text/plain 傳送的 JSON
+  if (e.postData && e.postData.contents) {
+    const contents = e.postData.contents;
+
+    try {
+      return JSON.parse(contents);
+    } catch (err) {
+      // 若不是 JSON，改讀取表單參數
+    }
   }
-  const form = new URLSearchParams();
-  form.set('action','delete');
-  form.set('rowNumber',String(record.rowNumber));
-  form.set('fileId',String(record.fileId || extractDriveId(record.fileUrl) || ''));
-  form.set('className',String(record.className || ''));
-  form.set('timestamp',String(record.timestamp || ''));
-  form.set('issue',String(record.issue || ''));
-  form.set('fileUrl',String(record.fileUrl || ''));
-  form.set('password',adminPassword);
-  try {
-    /* no-cors POST 無法讀取 GAS 回應。送出後重新查詢確認是否刪除成功。 */
-    await fetch(GAS_WEB_APP_URL,{
-      method:'POST',
-      mode:'no-cors',
-      headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-      body:form.toString()
-    });
-    alert('刪除請求已送出，將重新載入資料確認結果。若資料仍存在，請確認管理者密碼及 GAS 後端回應。');
-    await new Promise(resolve => setTimeout(resolve,1200));
-    await loadRecords();
-  } catch(err) {
-    alert('刪除請求發生錯誤：' + err.message);
+
+  // 支援 application/x-www-form-urlencoded
+  if (e.parameter) {
+    return e.parameter;
   }
+
+  throw new Error("POST 資料格式錯誤");
 }
-</script>
-</body>
-</html>
+
+
+/* =====================================================
+   照片上傳及寫入試算表
+===================================================== */
+
+function uploadRecord_(data) {
+  const className = String(data.className || "").trim();
+  const issue = String(data.issue || "").trim();
+  const timestamp = String(data.timestamp || "").trim();
+  const fileName = String(data.fileName || "").trim();
+  const imageData = String(data.imageData || "");
+
+  if (!className) {
+    throw new Error("缺少班級資料");
+  }
+
+  if (!imageData) {
+    throw new Error("缺少照片資料");
+  }
+
+  // 取得 Base64
+  const base64Match = imageData.match(
+    /^data:image\/([a-zA-Z0-9.+-]+);base64,(.+)$/
+  );
+
+  if (!base64Match) {
+    throw new Error("照片格式錯誤，必須為 Base64 圖片");
+  }
+
+  const imageType = base64Match[1].toLowerCase();
+
+  if (!["jpeg", "jpg", "png", "webp"].includes(imageType)) {
+    throw new Error("不支援的照片格式：" + imageType);
+  }
+
+  const bytes = Utilities.base64Decode(base64Match[2]);
+
+  if (!bytes || bytes.length === 0) {
+    throw new Error("照片內容為空");
+  }
+
+  const mimeType = imageType === "jpg"
+    ? "image/jpeg"
+    : "image/" + imageType;
+
+  const blob = Utilities.newBlob(
+    bytes,
+    mimeType,
+    fileName || ("整潔評分_" + Date.now() + ".jpg")
+  );
+
+  // 取得或建立 Drive 資料夾
+  const folder = getOrCreateFolder_();
+
+  // 儲存照片
+  const file = folder.createFile(blob);
+
+  // 取得試算表
+  const sheet = getDataSheet_();
+
+  // 寫入資料
+  sheet.appendRow([
+    timestamp || Utilities.formatDate(
+      new Date(),
+      "Asia/Taipei",
+      "yyyy/MM/dd HH:mm:ss"
+    ),
+    className,
+    issue,
+    file.getUrl()
+  ]);
+
+  return {
+    fileId: file.getId(),
+    fileUrl: file.getUrl()
+  };
+}
+
+
+/* =====================================================
+   查詢全部紀錄
+===================================================== */
+
+function getRecords_() {
+  const sheet = getDataSheet_();
+
+  const lastRow = sheet.getLastRow();
+
+  if (lastRow < 2) {
+    return [];
+  }
+
+  const values = sheet
+    .getRange(2, 1, lastRow - 1, 4)
+    .getDisplayValues();
+
+  const records = [];
+
+  values.forEach(function(row, index) {
+    const timestamp = row[0];
+    const className = row[1];
+    const issue = row[2];
+    const fileUrl = row[3];
+
+    // 略過完全空白的資料列
+    if (!timestamp && !className && !issue && !fileUrl) {
+      return;
+    }
+
+    const fileId = extractDriveFileId_(fileUrl);
+
+    records.push({
+      rowNumber: index + 2,
+      timestamp: timestamp,
+      className: className,
+      issue: issue,
+      fileUrl: fileUrl,
+      fileId: fileId,
+      thumbnailUrl: fileId
+        ? "https://drive.google.com/thumbnail?id=" +
+          encodeURIComponent(fileId) +
+          "&sz=w800"
+        : ""
+    });
+  });
+
+  // 最新紀錄排在前面
+  records.reverse();
+
+  return records;
+}
+
+
+/* =====================================================
+   管理者密碼驗證
+===================================================== */
+
+function verifyAdminPassword_(inputPassword) {
+  const savedPassword = PropertiesService
+    .getScriptProperties()
+    .getProperty("ADMIN_PASSWORD");
+
+  if (!savedPassword) {
+    return {
+      ok: false,
+      message: "尚未設定管理者密碼，請聯絡系統管理員"
+    };
+  }
+
+  const input = String(inputPassword || "");
+
+  if (!constantTimeEquals_(input, savedPassword)) {
+    return {
+      ok: false,
+      message: "管理者密碼錯誤"
+    };
+  }
+
+  return {
+    ok: true,
+    message: "管理者驗證成功"
+  };
+}
+
+
+/* =====================================================
+   固定時間字串比較
+===================================================== */
+
+function constantTimeEquals_(a, b) {
+  a = String(a);
+  b = String(b);
+
+  let diff = a.length ^ b.length;
+
+  const maxLength = Math.max(a.length, b.length);
+
+  for (let i = 0; i < maxLength; i++) {
+    const charA = i < a.length ? a.charCodeAt(i) : 0;
+    const charB = i < b.length ? b.charCodeAt(i) : 0;
+
+    diff |= charA ^ charB;
+  }
+
+  return diff === 0;
+}
+
+
+/* =====================================================
+   刪除紀錄及照片
+===================================================== */
+
+function deleteRecord_(data) {
+  // 每次刪除都必須重新驗證密碼
+  const auth = verifyAdminPassword_(
+    data.password || data.adminPassword || ""
+  );
+
+  if (!auth.ok) {
+    throw new Error(auth.message);
+  }
+
+  const rowNumber = Number(data.rowNumber);
+
+  if (
+    !Number.isInteger(rowNumber) ||
+    rowNumber < 2
+  ) {
+    throw new Error("無效的資料列編號");
+  }
+
+  const sheet = getDataSheet_();
+
+  if (rowNumber > sheet.getLastRow()) {
+    throw new Error("找不到指定的資料列");
+  }
+
+  // 重新讀取資料，避免刪錯列
+  const row = sheet
+    .getRange(rowNumber, 1, 1, 4)
+    .getDisplayValues()[0];
+
+  const savedTimestamp = String(row[0] || "");
+  const savedClassName = String(row[1] || "");
+  const savedIssue = String(row[2] || "");
+  const savedFileUrl = String(row[3] || "");
+
+  // 比對前端送來的資料，避免資料列已變動卻刪除錯誤紀錄
+  if (
+    savedClassName !== String(data.className || "") ||
+    savedTimestamp !== String(data.timestamp || "") ||
+    savedIssue !== String(data.issue || "")
+  ) {
+    throw new Error("資料內容已變動，為避免誤刪，請重新載入紀錄");
+  }
+
+  // 優先使用試算表內的照片連結取得檔案 ID
+  const fileId = extractDriveFileId_(savedFileUrl);
+
+  // 刪除試算表資料列
+  sheet.deleteRow(rowNumber);
+
+  // 將對應照片移至垃圾桶
+  if (fileId) {
+    try {
+      DriveApp.getFileById(fileId).setTrashed(true);
+    } catch (err) {
+      // 照片不存在或無刪除權限時，不影響資料列刪除
+      console.error("照片移至垃圾桶失敗：" + err.message);
+    }
+  }
+
+  return true;
+}
+
+
+/* =====================================================
+   從 Google Drive 網址取得檔案 ID
+===================================================== */
+
+function extractDriveFileId_(url) {
+  const value = String(url || "");
+
+  if (!value) {
+    return "";
+  }
+
+  let match = value.match(/\/d\/([a-zA-Z0-9_-]+)/);
+
+  if (match) {
+    return match[1];
+  }
+
+  match = value.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+
+  if (match) {
+    return match[1];
+  }
+
+  return "";
+}
+
+
+/* =====================================================
+   取得或建立 Drive 資料夾
+===================================================== */
+
+function getOrCreateFolder_() {
+  const folders = DriveApp.getFoldersByName(FOLDER_NAME);
+
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+
+  return DriveApp.createFolder(FOLDER_NAME);
+}
+
+
+/* =====================================================
+   取得或建立試算表及工作表
+===================================================== */
+
+function getDataSheet_() {
+  const files = DriveApp.getFilesByName(SPREADSHEET_NAME);
+  let spreadsheet;
+
+  if (files.hasNext()) {
+    const file = files.next();
+    spreadsheet = SpreadsheetApp.openById(file.getId());
+  } else {
+    spreadsheet = SpreadsheetApp.create(SPREADSHEET_NAME);
+  }
+
+  let sheet = spreadsheet.getSheets()[0];
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet("工作表1");
+  }
+
+  // 若工作表完全空白，建立標題列
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(HEADERS);
+  }
+
+  return sheet;
+}
+
+
+/* =====================================================
+   JSON 回應
+===================================================== */
+
+function jsonResponse_(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+
+/* =====================================================
+   手動測試：確認試算表及資料夾可正常取得
+===================================================== */
+
+function testSystem() {
+  const folder = getOrCreateFolder_();
+  const sheet = getDataSheet_();
+
+  Logger.log("Drive 資料夾：" + folder.getName());
+  Logger.log("試算表：" + sheet.getParent().getName());
+  Logger.log("工作表：" + sheet.getName());
+  Logger.log("目前資料筆數：" + Math.max(0, sheet.getLastRow() - 1));
+}
