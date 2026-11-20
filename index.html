@@ -119,6 +119,13 @@
     <p class="text-sm" style="color: var(--morandi-muted);">請選擇要使用的功能</p>
   </div>
 
+  <div id="lineBrowserNotice" class="hidden rounded-2xl p-4 space-y-2" style="background: #E8F0F5; border: 2px solid #B9CDD9; color: #405968;">
+    <div class="font-bold">📱 目前使用 LINE 內建瀏覽器</div>
+    <p id="lineBrowserAdvice" class="text-sm">若拍照或查看評分時發生異常，建議改用手機外部瀏覽器開啟。</p>
+    <a id="lineExternalBrowserLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-block rounded-xl px-4 py-2 text-sm font-bold" style="background: #5E8283; color: white; text-decoration: none;">嘗試改用外部瀏覽器開啟</a>
+    <p class="text-xs">若仍停留在 LINE，請點右上角「⋯」，選擇「以其他瀏覽器開啟」。</p>
+  </div>
+
   <button id="goRatingBtn" class="w-full pop-btn p-5 text-left" style="background: var(--morandi-primary); color: white;">
     <div class="text-xl font-bold">📷 評分系統</div>
     <div class="text-sm mt-1 opacity-90">選擇班級、巡查區域、拍照並上傳缺失紀錄</div>
@@ -184,6 +191,9 @@
         <p class="font-bold" style="color: var(--morandi-primary-dark);">點擊此處開啟相機拍照</p>
         <p class="text-xs" style="color: var(--morandi-muted);">拍照後會先顯示浮水印照片供確認</p>
       </div>
+    </div>
+    <div id="lineCameraNotice" class="hidden rounded-xl p-3 text-xs" style="background: #E8F0F5; color: #405968; border: 1px solid #B9CDD9;">
+      LINE 內建瀏覽器不一定能直接呼叫相機。若點擊後只出現相簿，請從右上角「⋯」選擇「以其他瀏覽器開啟」（iPhone 使用 Safari；Android 使用 Chrome）。原本的相簿選取功能仍可使用。
     </div>
   </section>
 
@@ -260,6 +270,7 @@
     <p id="queryStatus" class="text-xs" style="color: var(--morandi-muted);">尚未載入資料</p>
   </section>
 
+  <div id="queryResultsContainer" class="hidden space-y-5">
   <!-- 統計 -->
   <section class="pop-card p-5 space-y-3">
     <h3 class="font-bold">📈 篩選結果統計</h3>
@@ -298,6 +309,7 @@
       <div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請先載入資料</div>
     </div>
   </section>
+  </div>
 </section>
 </main>
 
@@ -345,6 +357,31 @@ document.getElementById('homeBtn').onclick = () => showPage('homePage');
 document.querySelectorAll('.backHome').forEach(btn => {
   btn.onclick = () => showPage('homePage');
 });
+
+/* =====================================================
+   LINE 內建瀏覽器相容性提示
+===================================================== */
+(function setupLineBrowserGuidance() {
+  const ua = navigator.userAgent || '';
+  const isLineBrowser = /Line\//i.test(ua) || /;\s*wv\)/i.test(ua) && /LINE/i.test(ua);
+  if (!isLineBrowser) return;
+
+  document.getElementById('lineBrowserNotice').classList.remove('hidden');
+  document.getElementById('lineCameraNotice').classList.remove('hidden');
+
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  document.getElementById('lineBrowserAdvice').textContent = isIOS
+    ? '若拍照或查看評分時發生異常，建議改用 Safari 開啟。'
+    : '若拍照或查看評分時發生異常，建議改用 Chrome 開啟。';
+
+  try {
+    const externalUrl = new URL(window.location.href);
+    externalUrl.searchParams.set('openExternalBrowser', '1');
+    document.getElementById('lineExternalBrowserLink').href = externalUrl.toString();
+  } catch (err) {
+    document.getElementById('lineExternalBrowserLink').classList.add('hidden');
+  }
+})();
 
 /* =====================================================
    評分系統
@@ -402,7 +439,7 @@ const outdoorTab = document.getElementById('outdoorTab');
 
 const issueOptions = {
   classroom: [
-    ['垃圾、回收未倒','🗑️ 垃圾、回收未倒'],
+    ['垃圾、回收超過1/2桶未倒','🗑️ 垃圾、回收超過1/2桶未倒'],
     ['地面髒亂','🥤 地面髒亂'],
     ['玻璃窗台未擦','🪟 玻璃窗台未擦'],
     ['黑板未擦','⬛ 黑板未擦'],
@@ -677,14 +714,19 @@ updateUploadStatus();
 let allRecords = [];
 let recordsLoaded = false;
 let adminPassword = '';
+let filterApplied = false;
 
-/* JSONP 查詢 */
-function jsonpRequest(url,timeoutMs=20000) {
+/* JSONP 查詢：區分載入失敗與逾時，並自動重試一次 */
+function jsonpRequestOnce(url,timeoutMs=20000) {
   return new Promise((resolve,reject) => {
     const callbackName = 'gasJsonp_' + Date.now() + '_' + Math.floor(Math.random()*100000);
     const script = document.createElement('script');
     let finished = false;
-    const timer = setTimeout(() => finish(new Error('查詢逾時，請稍後重試。')),timeoutMs);
+    const timer = setTimeout(() => {
+      const err = new Error('GAS_TIMEOUT');
+      err.code = 'GAS_TIMEOUT';
+      finish(err);
+    },timeoutMs);
     function finish(err,data) {
       if (finished) return;
       finished = true;
@@ -696,11 +738,34 @@ function jsonpRequest(url,timeoutMs=20000) {
       else resolve(data);
     }
     window[callbackName] = data => finish(null,data);
-    script.onerror = () => finish(new Error('無法連線至 GAS，請確認部署權限及網址。'));
+    script.onerror = () => {
+      const err = new Error('GAS_LOAD_ERROR');
+      err.code = 'GAS_LOAD_ERROR';
+      finish(err);
+    };
     script.src = url + (url.includes('?') ? '&' : '?') +
       'action=list&callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
     document.body.appendChild(script);
   });
+}
+
+async function jsonpRequest(url,timeoutMs=20000,onRetry=()=>{}) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await jsonpRequestOnce(url,timeoutMs);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        onRetry();
+        await new Promise(resolve => setTimeout(resolve,800));
+      }
+    }
+  }
+  if (lastError && lastError.code === 'GAS_TIMEOUT') {
+    throw new Error('GAS 回應逾時，連續等待兩次仍未收到資料。請檢查網路後重試；若從 LINE 開啟，建議改用 Safari／Chrome。');
+  }
+  throw new Error('瀏覽器無法載入 GAS，可能是 LINE 內建瀏覽器或目前網路限制。請改用 Safari／Chrome，或稍後重試。');
 }
 
 /* =====================================================
@@ -749,34 +814,47 @@ function normalizeRecord(raw) {
 /* =====================================================
    載入資料
 ===================================================== */
-async function loadRecords() {
-  const status = document.getElementById('queryStatus');
-  status.textContent = '資料載入中…';
-  document.getElementById('recordList').innerHTML =
-    '<div class="pop-card p-5 text-center">資料載入中…</div>';
-  try {
-    const data = await jsonpRequest(GAS_WEB_APP_URL);
-    if (!data || data.result === 'error') {
-      throw new Error((data && data.error) || 'GAS 回傳資料格式不正確');
-    }
-    const source =
-      Array.isArray(data.records) ? data.records :
-      Array.isArray(data.data) ? data.data :
-      Array.isArray(data.items) ? data.items :
-      Array.isArray(data.rows) ? data.rows : null;
-    if (!source) {
-      throw new Error('查詢回傳內容沒有 records/data/items/rows 陣列，請核對 GAS doGet 回傳格式。');
-    }
-    allRecords = source.map(normalizeRecord);
-    recordsLoaded = true;
-    status.textContent = `載入完成，共 ${allRecords.length} 筆紀錄`;
-    renderRecords();
-  } catch(err) {
-    recordsLoaded = false;
-    status.textContent = '載入失敗：' + err.message;
+let recordsLoadingPromise = null;
+function loadRecords() {
+  if (recordsLoadingPromise) return recordsLoadingPromise;
+
+  recordsLoadingPromise = (async () => {
+    const status = document.getElementById('queryStatus');
+    status.textContent = '資料載入中…';
     document.getElementById('recordList').innerHTML =
-      `<div class="pop-card p-4 text-sm" style="color: var(--morandi-rose);">${escapeHtml(err.message)}</div>`;
-  }
+      '<div class="pop-card p-5 text-center">資料載入中…</div>';
+    try {
+      const data = await jsonpRequest(GAS_WEB_APP_URL,20000,() => {
+        status.textContent = '第一次連線未成功，正在自動重試…';
+      });
+      if (!data || data.result === 'error') {
+        throw new Error((data && data.error) || 'GAS 回傳資料格式不正確');
+      }
+      const source =
+        Array.isArray(data.records) ? data.records :
+        Array.isArray(data.data) ? data.data :
+        Array.isArray(data.items) ? data.items :
+        Array.isArray(data.rows) ? data.rows : null;
+      if (!source) {
+        throw new Error('GAS 已回應，但資料格式不正確：找不到 records/data/items/rows 陣列。');
+      }
+      allRecords = source.map(normalizeRecord);
+      recordsLoaded = true;
+      status.textContent = `載入完成，共 ${allRecords.length} 筆紀錄`;
+      if (filterApplied) renderRecords();
+      else document.getElementById('recordList').innerHTML =
+        '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請設定查詢條件後，按「套用篩選」查看結果</div>';
+    } catch(err) {
+      recordsLoaded = false;
+      status.textContent = '載入失敗：' + err.message;
+      document.getElementById('recordList').innerHTML =
+        `<div class="pop-card p-4 text-sm" style="color: var(--morandi-rose);">${escapeHtml(err.message)}</div>`;
+    }
+  })().finally(() => {
+    recordsLoadingPromise = null;
+  });
+
+  return recordsLoadingPromise;
 }
 
 /* =====================================================
@@ -860,6 +938,7 @@ function renderStats(records) {
    紀錄列表及照片縮圖
 ===================================================== */
 function renderRecords() {
+  if (!filterApplied) return;
   const records = getFilteredRecords();
   renderStats(records);
   const list = document.getElementById('recordList');
@@ -930,16 +1009,21 @@ function renderRecords() {
 /* =====================================================
    篩選按鈕
 ===================================================== */
-['queryClass','queryGrade','queryArea','dateFrom','dateTo'].forEach(id => {
-  document.getElementById(id).addEventListener('change',renderRecords);
-});
-document.getElementById('applyFilterBtn').onclick = renderRecords;
+document.getElementById('applyFilterBtn').onclick = () => {
+  filterApplied = true;
+  document.getElementById('queryResultsContainer').classList.remove('hidden');
+  if (recordsLoaded) renderRecords();
+  else loadRecords();
+};
 document.getElementById('clearFilterBtn').onclick = () => {
   ['queryClass','queryGrade','queryArea','dateFrom','dateTo'].forEach(id => {
     document.getElementById(id).value = '';
   });
   populateClassOptions(document.getElementById('queryClass'), '', '全部班級');
-  renderRecords();
+  filterApplied = false;
+  document.getElementById('queryResultsContainer').classList.add('hidden');
+  document.getElementById('recordList').innerHTML =
+    '<div class="pop-card p-5 text-center text-sm" style="color: var(--morandi-muted);">請設定查詢條件後，按「套用篩選」查看結果</div>';
 };
 document.getElementById('reloadBtn').onclick = loadRecords;
 
